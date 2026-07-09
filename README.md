@@ -1,4 +1,4 @@
-# Padel Club — Court Booking App
+# Let's Padel — Court Booking App
 
 A Flutter (iOS + Android) app for booking padel courts at the club's two
 branches (Airport Road: 3 courts, Hazmieh: 2 courts), backed by Firebase

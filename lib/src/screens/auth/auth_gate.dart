@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../admin/admin_home.dart';
+import '../contact_us_screen.dart';
 import '../customer/customer_home.dart';
 import 'complete_profile_screen.dart';
 import 'login_screen.dart';
@@ -61,6 +62,17 @@ class _Splash extends StatelessWidget {
   const _Splash();
 
   @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: CircularProgressIndicator()));
+  Widget build(BuildContext context) => const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              BrandLogo(height: 160),
+              SizedBox(height: 32),
+              CircularProgressIndicator(),
+            ],
+          ),
+        ),
+      );
 }

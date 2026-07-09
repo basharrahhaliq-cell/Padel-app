@@ -1,6 +1,11 @@
 {
   "@@locale": "en",
-  "appTitle": "Padel Club",
+  "appTitle": "Let's Padel",
+  "contactUsTitle": "Contact us",
+  "contactUsHint": "Questions? Chat with your branch on WhatsApp:",
+  "whatsappButton": "WhatsApp — {branch}",
+  "@whatsappButton": {"placeholders": {"branch": {"type": "String"}}},
+  "couldNotOpenWhatsapp": "Could not open WhatsApp on this phone.",
   "bookTab": "Book",
   "myBookingsTab": "My Bookings",
 

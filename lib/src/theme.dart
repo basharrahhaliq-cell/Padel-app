@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-/// Club look & feel: padel-court blue + padel-ball lime accent.
+/// "Let's Padel" brand: royal racket blue, deep navy, padel-ball lime —
+/// sampled from the club logo.
 class AppTheme {
   AppTheme._();
 
-  static const Color courtBlue = Color(0xFF0E5FA8);
-  static const Color courtBlueDark = Color(0xFF0A4478);
-  static const Color ballLime = Color(0xFFD7F225);
+  static const Color courtBlue = Color(0xFF2557B8); // racket royal blue
+  static const Color courtBlueDark = Color(0xFF173F63); // "PADEL" navy
+  static const Color ballLime = Color(0xFFC9E62E); // padel ball
   static const Color surface = Color(0xFFF5F7FA);
 
   static ThemeData light() {

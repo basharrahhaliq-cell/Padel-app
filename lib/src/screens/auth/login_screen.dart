@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import '../../../main.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
-import '../../theme.dart';
 import '../../utils/validators.dart';
+import '../contact_us_screen.dart';
 import '../privacy_policy_screen.dart';
 
 /// Login / sign-up with email+password, or one tap with Google.
@@ -120,14 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 24),
-              const Icon(Icons.sports_tennis,
-                  size: 64, color: AppTheme.courtBlue),
-              const SizedBox(height: 8),
-              Text(l10n.appTitle,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: AppTheme.courtBlue,
-                      fontWeight: FontWeight.bold)),
+              const BrandLogo(height: 150),
               const SizedBox(height: 28),
               if (_creatingAccount) ...[
                 TextField(
@@ -214,11 +207,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _busy ? null : _forgotPassword,
                   child: Text(l10n.forgotPassword),
                 ),
-              TextButton(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const PrivacyPolicyScreen())),
-                child: Text(l10n.privacyPolicyTitle,
-                    style: TextStyle(color: Colors.grey.shade600)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const ContactUsScreen())),
+                    child: Text(l10n.contactUsTitle,
+                        style: TextStyle(color: Colors.grey.shade600)),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const PrivacyPolicyScreen())),
+                    child: Text(l10n.privacyPolicyTitle,
+                        style: TextStyle(color: Colors.grey.shade600)),
+                  ),
+                ],
               ),
             ],
           ),

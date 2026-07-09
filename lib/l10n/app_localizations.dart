@@ -97,8 +97,32 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Padel Club'**
+  /// **'Let\'s Padel'**
   String get appTitle;
+
+  /// No description provided for @contactUsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact us'**
+  String get contactUsTitle;
+
+  /// No description provided for @contactUsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions? Chat with your branch on WhatsApp:'**
+  String get contactUsHint;
+
+  /// No description provided for @whatsappButton.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp — {branch}'**
+  String whatsappButton(String branch);
+
+  /// No description provided for @couldNotOpenWhatsapp.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open WhatsApp on this phone.'**
+  String get couldNotOpenWhatsapp;
 
   /// No description provided for @bookTab.
   ///

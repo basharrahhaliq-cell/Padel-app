@@ -9,7 +9,21 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Padel Club';
+  String get appTitle => 'Let\'s Padel';
+
+  @override
+  String get contactUsTitle => 'Contact us';
+
+  @override
+  String get contactUsHint => 'Questions? Chat with your branch on WhatsApp:';
+
+  @override
+  String whatsappButton(String branch) {
+    return 'WhatsApp — $branch';
+  }
+
+  @override
+  String get couldNotOpenWhatsapp => 'Could not open WhatsApp on this phone.';
 
   @override
   String get bookTab => 'Book';

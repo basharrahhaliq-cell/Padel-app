@@ -1,4 +1,4 @@
-# Padel Club App — Owner's Setup Guide
+# Let's Padel App — Owner's Setup Guide
 
 This guide assumes **zero coding experience**. Follow it top to bottom, one
 step at a time. You only do most of this once.

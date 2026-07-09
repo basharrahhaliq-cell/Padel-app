@@ -35,7 +35,7 @@ class PadelApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = MaterialApp(
-      title: 'Padel Club',
+      title: "Let's Padel",
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       localizationsDelegates: const [
