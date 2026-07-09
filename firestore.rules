@@ -1,0 +1,79 @@
+rules_version = '2';
+
+// Security rules for the padel booking app.
+// Deploy from the Firebase console: Firestore Database -> Rules -> paste -> Publish
+// (or `firebase deploy --only firestore:rules` if you use the Firebase CLI).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // User profiles: each user manages their own; role changes only by admin
+    // (or manually in the console). Admins can read all profiles.
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.role == 'customer';
+      allow update: if signedIn() && (
+        isAdmin() ||
+        (request.auth.uid == userId &&
+         request.resource.data.role == resource.data.role)
+      );
+    }
+
+    // Branches, courts and prices: everyone signed in can read;
+    // only the owner (admin role) can change them — including the one-time
+    // "Initialize club data" seeding, so grant yourself admin first (SETUP.md).
+    match /branches/{branchId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+      match /courts/{courtId} {
+        allow read: if signedIn();
+        allow write: if isAdmin();
+      }
+    }
+
+    // Happy hour rules: readable by customers (to show prices), admin-managed.
+    match /happyHourRules/{ruleId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Bookings: customers create their own and may cancel their own;
+    // admins see and manage everything.
+    match /bookings/{bookingId} {
+      allow read: if signedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAdmin() || (
+        signedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.isBlock == false &&
+        request.resource.data.status == 'confirmed'
+      );
+      // Customers may only flip their own booking to cancelled.
+      allow update: if isAdmin() || (
+        signedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'cancelled' &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Day sheets (busy intervals per court per day): readable by all
+    // signed-in users so the app can show availability; written by the
+    // booking transaction of any signed-in user or by admins.
+    match /courtDays/{dayId} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+  }
+}

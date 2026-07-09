@@ -1,0 +1,104 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../utils/time_utils.dart';
+
+enum BookingStatus { confirmed, cancelled }
+
+/// A reservation (or an owner "block" for maintenance / private events).
+///
+/// The price is stored on the booking at creation time, so later price
+/// changes never affect existing bookings. `paymentStatus` is always
+/// "pay_at_club" for now — the field exists so online payments can be
+/// added later without a data migration.
+class Booking {
+  final String id;
+  final String branchId;
+  final String courtId;
+  final String branchName;
+  final String courtName;
+  final String date; // "yyyy-MM-dd"
+  final int startMinutes;
+  final int durationMinutes;
+  final String userId;
+  final String userName;
+  final String userPhone;
+  final double price;
+  final String? happyHourLabel; // set when a happy hour rule was applied
+  final BookingStatus status;
+  final bool isBlock; // true = owner block (maintenance / private event)
+  final String? note; // reason for a block
+  final DateTime? createdAt;
+  final String paymentStatus;
+
+  const Booking({
+    required this.id,
+    required this.branchId,
+    required this.courtId,
+    required this.branchName,
+    required this.courtName,
+    required this.date,
+    required this.startMinutes,
+    required this.durationMinutes,
+    required this.userId,
+    required this.userName,
+    required this.userPhone,
+    required this.price,
+    this.happyHourLabel,
+    required this.status,
+    this.isBlock = false,
+    this.note,
+    this.createdAt,
+    this.paymentStatus = 'pay_at_club',
+  });
+
+  int get endMinutes => startMinutes + durationMinutes;
+
+  DateTime get startDateTime => dateTimeOf(parseDateKey(date), startMinutes);
+
+  factory Booking.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    return Booking(
+      id: doc.id,
+      branchId: (data['branchId'] as String?) ?? '',
+      courtId: (data['courtId'] as String?) ?? '',
+      branchName: (data['branchName'] as String?) ?? '',
+      courtName: (data['courtName'] as String?) ?? '',
+      date: (data['date'] as String?) ?? '',
+      startMinutes: (data['startMinutes'] as num?)?.toInt() ?? 0,
+      durationMinutes: (data['durationMinutes'] as num?)?.toInt() ?? 60,
+      userId: (data['userId'] as String?) ?? '',
+      userName: (data['userName'] as String?) ?? '',
+      userPhone: (data['userPhone'] as String?) ?? '',
+      price: (data['price'] as num?)?.toDouble() ?? 0,
+      happyHourLabel: data['happyHourLabel'] as String?,
+      status: data['status'] == 'cancelled'
+          ? BookingStatus.cancelled
+          : BookingStatus.confirmed,
+      isBlock: (data['isBlock'] as bool?) ?? false,
+      note: data['note'] as String?,
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+      paymentStatus: (data['paymentStatus'] as String?) ?? 'pay_at_club',
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'branchId': branchId,
+        'courtId': courtId,
+        'branchName': branchName,
+        'courtName': courtName,
+        'date': date,
+        'startMinutes': startMinutes,
+        'durationMinutes': durationMinutes,
+        'endMinutes': endMinutes,
+        'userId': userId,
+        'userName': userName,
+        'userPhone': userPhone,
+        'price': price,
+        'happyHourLabel': happyHourLabel,
+        'status': status == BookingStatus.cancelled ? 'cancelled' : 'confirmed',
+        'isBlock': isBlock,
+        'note': note,
+        'createdAt': FieldValue.serverTimestamp(),
+        'paymentStatus': paymentStatus,
+      };
+}
