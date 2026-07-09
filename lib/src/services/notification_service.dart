@@ -1,9 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../models/app_user.dart';
 import '../models/booking.dart';
 import '../utils/time_utils.dart';
 
@@ -43,6 +45,63 @@ class NotificationService {
       // Messaging is optional; ignore if unavailable (e.g. no APNs yet).
     }
     _ready = true;
+  }
+
+  /// Registers this device for server-sent pushes (open matches,
+  /// tournaments): saves the FCM token on the user profile and keeps the
+  /// topic subscriptions in sync with the user's level and settings.
+  /// Safe to call on every app start / profile change.
+  Future<void> registerForPush(AppUser profile) async {
+    await init();
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final users = FirebaseFirestore.instance.collection('users');
+
+      Future<void> saveToken(String token) => users.doc(profile.uid).set(
+          {'fcmTokens': FieldValue.arrayUnion([token])},
+          SetOptions(merge: true));
+
+      final token = await messaging.getToken();
+      if (token != null) await saveToken(token);
+      messaging.onTokenRefresh.listen(saveToken);
+
+      // Open-match topics: only the user's level, only when opted in.
+      for (final level in kSkillLevels) {
+        final wanted =
+            profile.notifyOpenMatches && profile.skillLevel == level;
+        final topic = 'open_matches_$level';
+        wanted
+            ? await messaging.subscribeToTopic(topic)
+            : await messaging.unsubscribeFromTopic(topic);
+      }
+      // Tournament topics: user's level + open-to-all tournaments.
+      await messaging.subscribeToTopic('tournaments_open');
+      for (final level in kSkillLevels) {
+        final topic = 'tournaments_$level';
+        profile.skillLevel == level
+            ? await messaging.subscribeToTopic(topic)
+            : await messaging.unsubscribeFromTopic(topic);
+      }
+
+      // Show pushes that arrive while the app is open.
+      FirebaseMessaging.onMessage.listen((message) {
+        final n = message.notification;
+        if (n == null) return;
+        _plugin.show(
+          id: n.hashCode,
+          title: n.title,
+          body: n.body,
+          notificationDetails: const NotificationDetails(
+            android: AndroidNotificationDetails(
+                'club_news', 'Club notifications',
+                importance: Importance.high, priority: Priority.high),
+            iOS: DarwinNotificationDetails(),
+          ),
+        );
+      });
+    } catch (_) {
+      // Messaging not available (e.g. missing APNs setup) — app still works.
+    }
   }
 
   /// Schedules the "game in 2 hours" reminder. Skipped when the game is

@@ -6,9 +6,11 @@ import '../../models/app_user.dart';
 import '../../models/branch.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/notification_service.dart';
 import '../../theme.dart';
 import 'booking_flow_screen.dart';
 import 'my_bookings_screen.dart';
+import 'open_matches_screen.dart';
 import 'profile_screen.dart';
 
 class CustomerHome extends StatefulWidget {
@@ -24,13 +26,24 @@ class _CustomerHomeState extends State<CustomerHome> {
   int _tab = 0;
 
   @override
+  void initState() {
+    super.initState();
+    // Register this device for open-match / tournament pushes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<NotificationService>().registerForPush(widget.profile);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: Text(switch (_tab) {
           0 => l10n.appTitle,
-          1 => l10n.myBookingsTab,
+          1 => 'Open Matches',
+          2 => l10n.myBookingsTab,
           _ => 'Profile',
         }),
         actions: [
@@ -43,7 +56,8 @@ class _CustomerHomeState extends State<CustomerHome> {
       ),
       body: switch (_tab) {
         0 => _BranchPicker(profile: widget.profile),
-        1 => MyBookingsScreen(profile: widget.profile),
+        1 => OpenMatchesScreen(profile: widget.profile),
+        2 => MyBookingsScreen(profile: widget.profile),
         _ => ProfileScreen(profile: widget.profile),
       },
       bottomNavigationBar: NavigationBar(
@@ -52,6 +66,8 @@ class _CustomerHomeState extends State<CustomerHome> {
         destinations: [
           NavigationDestination(
               icon: const Icon(Icons.sports_tennis), label: l10n.bookTab),
+          const NavigationDestination(
+              icon: Icon(Icons.group_add), label: 'Matches'),
           NavigationDestination(
               icon: const Icon(Icons.event_note), label: l10n.myBookingsTab),
           const NavigationDestination(

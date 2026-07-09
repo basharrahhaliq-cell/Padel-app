@@ -30,6 +30,14 @@ class Booking {
   final DateTime? createdAt;
   final String paymentStatus;
 
+  /// Set when the owner turned this booking into an Open Match.
+  final bool isOpenMatch;
+  final String? openMatchId;
+
+  /// Set to true by the Cloud Function once XP was granted (after the
+  /// game time has passed).
+  final bool xpAwarded;
+
   const Booking({
     required this.id,
     required this.branchId,
@@ -49,6 +57,9 @@ class Booking {
     this.note,
     this.createdAt,
     this.paymentStatus = 'pay_at_club',
+    this.isOpenMatch = false,
+    this.openMatchId,
+    this.xpAwarded = false,
   });
 
   int get endMinutes => startMinutes + durationMinutes;
@@ -78,6 +89,9 @@ class Booking {
       note: data['note'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       paymentStatus: (data['paymentStatus'] as String?) ?? 'pay_at_club',
+      isOpenMatch: (data['isOpenMatch'] as bool?) ?? false,
+      openMatchId: data['openMatchId'] as String?,
+      xpAwarded: (data['xpAwarded'] as bool?) ?? false,
     );
   }
 
@@ -100,5 +114,8 @@ class Booking {
         'note': note,
         'createdAt': FieldValue.serverTimestamp(),
         'paymentStatus': paymentStatus,
+        'isOpenMatch': isOpenMatch,
+        'openMatchId': openMatchId,
+        'xpAwarded': false,
       };
 }

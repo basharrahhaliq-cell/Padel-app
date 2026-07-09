@@ -160,6 +160,14 @@ class _BookingCard extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 12, color: AppTheme.courtBlueDark)),
               ),
+            if (booking.isOpenMatch)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text('Open Match — players can join from the '
+                    'Matches tab',
+                    style: TextStyle(
+                        fontSize: 12, color: AppTheme.courtBlueDark)),
+              ),
             if (onCancel != null)
               Align(
                 alignment: Alignment.centerRight,

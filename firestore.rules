@@ -57,14 +57,30 @@ service cloud.firestore {
         request.resource.data.isBlock == false &&
         request.resource.data.status == 'confirmed'
       );
-      // Customers may only flip their own booking to cancelled.
+      // Customers may cancel their own booking, or attach/detach an
+      // open match to it — nothing else.
       allow update: if isAdmin() || (
         signedIn() &&
-        resource.data.userId == request.auth.uid &&
-        request.resource.data.status == 'cancelled' &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status'])
+        resource.data.userId == request.auth.uid && (
+          (request.resource.data.status == 'cancelled' &&
+           request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status'])) ||
+          request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['isOpenMatch', 'openMatchId'])
+        )
       );
+      allow delete: if isAdmin();
+    }
+
+    // Open matches: anyone signed in can browse and join (players/status
+    // only); creating requires being the creator; admins can do anything.
+    match /openMatches/{matchId} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.resource.data.creatorId == request.auth.uid;
+      allow update: if isAdmin() || (signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['players', 'status']));
       allow delete: if isAdmin();
     }
 

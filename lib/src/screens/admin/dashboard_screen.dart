@@ -6,6 +6,7 @@ import '../../../main.dart';
 import '../../models/booking.dart';
 import '../../models/branch.dart';
 import '../../models/court.dart';
+import '../../models/open_match.dart';
 import '../../services/firestore_service.dart';
 import '../../theme.dart';
 import '../../utils/time_utils.dart';
@@ -71,7 +72,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         _filters(l10n, db),
         Expanded(
-          child: StreamBuilder<List<Booking>>(
+          child: StreamBuilder<List<OpenMatch>>(
+            stream: db.openMatchesOn(dateKey(_date)),
+            builder: (context, matchSnap) {
+              final matchByBooking = {
+                for (final m in matchSnap.data ?? <OpenMatch>[])
+                  m.bookingId: m,
+              };
+              return StreamBuilder<List<Booking>>(
             stream: db.bookingsOn(dateKey(_date), branchId: _branchId),
             builder: (context, snap) {
               if (!snap.hasData) {
@@ -106,11 +114,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         title: Text(b.isBlock
                             ? '${l10n.blockedLabel} — ${b.note ?? ''}'
-                            : b.userName),
+                            : b.isOpenMatch
+                                ? '${b.userName}  ·  OPEN MATCH'
+                                : b.userName),
                         subtitle: Text(
                           '${b.branchName} · ${b.courtName}\n'
                           '${formatMinutes(b.startMinutes)} – ${formatMinutes(b.endMinutes)}'
-                          '${b.isBlock ? '' : ' · ${b.userPhone}'}',
+                          '${b.isBlock ? '' : ' · ${b.userPhone}'}'
+                          '${matchByBooking.containsKey(b.id) ? '\nPlayers: ${matchByBooking[b.id]!.allPlayerNames.join(', ')}' : ''}',
                         ),
                         isThreeLine: true,
                         trailing: Column(
@@ -133,6 +144,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                 ],
               );
+            },
+          );
             },
           ),
         ),

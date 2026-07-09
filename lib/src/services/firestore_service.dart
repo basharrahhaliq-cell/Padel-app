@@ -4,7 +4,9 @@ import '../models/booking.dart';
 import '../models/branch.dart';
 import '../models/court.dart';
 import '../models/happy_hour_rule.dart';
+import '../models/open_match.dart';
 import '../utils/slot_engine.dart';
+import '../utils/time_utils.dart';
 
 /// Thrown when a slot was taken between viewing and confirming.
 class SlotTakenException implements Exception {}
@@ -160,7 +162,82 @@ class FirestoreService {
       raw.removeWhere((e) => e['bookingId'] == booking.id);
       tx.update(dayRef, {'intervals': raw});
       tx.update(bookingRef, {'status': 'cancelled'});
+      // An open match can't survive without its court.
+      if (booking.openMatchId != null) {
+        tx.update(_db.collection('openMatches').doc(booking.openMatchId!),
+            {'status': 'cancelled'});
+      }
     });
+  }
+
+  // ---------- Open matches ----------
+
+  /// Open matches customers can browse (today onward, still open).
+  Stream<List<OpenMatch>> openMatches() => _db
+      .collection('openMatches')
+      .where('status', isEqualTo: 'open')
+      .snapshots()
+      .map((s) {
+        final today = dateKey(DateTime.now());
+        final list = s.docs
+            .map(OpenMatch.fromDoc)
+            .where((m) => m.date.compareTo(today) >= 0)
+            .toList();
+        list.sort((a, b) => a.startDateTime.compareTo(b.startDateTime));
+        return list;
+      });
+
+  /// All matches (any status) on a date — used by the owner dashboard to
+  /// tag bookings and list joined players.
+  Stream<List<OpenMatch>> openMatchesOn(String date) => _db
+      .collection('openMatches')
+      .where('date', isEqualTo: date)
+      .snapshots()
+      .map((s) => s.docs.map(OpenMatch.fromDoc).toList());
+
+  /// Turns one of the creator's bookings into an open match.
+  Future<void> createOpenMatch(OpenMatch match) async {
+    final matchRef = _db.collection('openMatches').doc();
+    final bookingRef = _db.collection('bookings').doc(match.bookingId);
+    final batch = _db.batch();
+    batch.set(matchRef, match.toMap());
+    batch.update(bookingRef, {
+      'isOpenMatch': true,
+      'openMatchId': matchRef.id,
+    });
+    await batch.commit();
+  }
+
+  /// Joins an open match atomically; throws [SlotTakenException] when the
+  /// last spot was taken a moment earlier.
+  Future<void> joinOpenMatch(
+      String matchId, String uid, String name) async {
+    final ref = _db.collection('openMatches').doc(matchId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final match = OpenMatch.fromDoc(snap);
+      if (match.status != 'open' || match.hasJoined(uid)) {
+        throw SlotTakenException();
+      }
+      final players = [
+        for (final p in match.players) {'uid': p.uid, 'name': p.name},
+        {'uid': uid, 'name': name},
+      ];
+      tx.update(ref, {
+        'players': players,
+        if (players.length >= match.playersNeeded) 'status': 'full',
+      });
+    });
+  }
+
+  /// Creator cancels the match (keeps the court booking).
+  Future<void> cancelOpenMatch(OpenMatch match) async {
+    final batch = _db.batch();
+    batch.update(_db.collection('openMatches').doc(match.id),
+        {'status': 'cancelled'});
+    batch.update(_db.collection('bookings').doc(match.bookingId),
+        {'isOpenMatch': false, 'openMatchId': null});
+    await batch.commit();
   }
 
   // ---------- Queries ----------
