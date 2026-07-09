@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/banner_item.dart';
 import '../models/booking.dart';
 import '../models/branch.dart';
 import '../models/court.dart';
@@ -201,6 +202,24 @@ class FirestoreService {
       }
     });
   }
+
+  // ---------- Promo banners ----------
+
+  Stream<List<BannerItem>> banners() =>
+      _db.collection('banners').snapshots().map((s) {
+        final list = s.docs.map(BannerItem.fromDoc).toList();
+        list.sort((a, b) => a.order.compareTo(b.order));
+        return list;
+      });
+
+  Future<void> saveBanner(BannerItem banner) {
+    final col = _db.collection('banners');
+    final doc = banner.id.isEmpty ? col.doc() : col.doc(banner.id);
+    return doc.set(banner.toMap());
+  }
+
+  Future<void> deleteBanner(String id) =>
+      _db.collection('banners').doc(id).delete();
 
   // ---------- Vouchers ----------
 

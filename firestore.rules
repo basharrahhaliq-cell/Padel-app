@@ -84,6 +84,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Promo banners: read-only announcements managed by the owner.
+    match /banners/{bannerId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
     // Vouchers: customers read them (to browse and apply) and the booking
     // transaction may only bump the usage counters; owner manages them.
     match /vouchers/{code} {

@@ -4,6 +4,7 @@ import '../../theme.dart';
 import 'customers_screen.dart';
 import 'pricing_screen.dart';
 import 'revenue_screen.dart';
+import 'banners_screen.dart';
 import 'tournaments_admin_screen.dart';
 import 'vouchers_screen.dart';
 
@@ -22,6 +23,7 @@ class AdminMoreScreen extends StatelessWidget {
       (Icons.emoji_events, 'Tournaments', () =>
           const TournamentsAdminScreen()),
       (Icons.confirmation_number, 'Vouchers', () => const VouchersScreen()),
+      (Icons.campaign, 'Promo banners', () => const BannersScreen()),
     ];
     return ListView(
       padding: const EdgeInsets.all(16),
