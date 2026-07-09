@@ -84,6 +84,29 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Tournaments: everyone signed in reads; the owner manages them.
+    // Customers may register themselves (entry create with their own uid)
+    // and the tournament's counters move only via the register transaction.
+    match /tournaments/{tournamentId} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['entriesCount', 'waitlistCount']));
+
+      match /entries/{entryId} {
+        allow read: if signedIn();
+        allow create: if isAdmin() || (signedIn() &&
+          request.resource.data.uids.hasAny([request.auth.uid]));
+        allow update, delete: if isAdmin();
+      }
+
+      match /matches/{matchId} {
+        allow read: if signedIn();
+        allow write: if isAdmin();
+      }
+    }
+
     // Day sheets (busy intervals per court per day): readable by all
     // signed-in users so the app can show availability; written by the
     // booking transaction of any signed-in user or by admins.

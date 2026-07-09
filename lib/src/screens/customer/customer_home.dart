@@ -12,6 +12,7 @@ import 'booking_flow_screen.dart';
 import 'my_bookings_screen.dart';
 import 'open_matches_screen.dart';
 import 'profile_screen.dart';
+import 'tournaments_screen.dart';
 
 class CustomerHome extends StatefulWidget {
   final AppUser profile;
@@ -43,7 +44,8 @@ class _CustomerHomeState extends State<CustomerHome> {
         title: Text(switch (_tab) {
           0 => l10n.appTitle,
           1 => 'Open Matches',
-          2 => l10n.myBookingsTab,
+          2 => 'Tournaments',
+          3 => l10n.myBookingsTab,
           _ => 'Profile',
         }),
         actions: [
@@ -57,7 +59,8 @@ class _CustomerHomeState extends State<CustomerHome> {
       body: switch (_tab) {
         0 => _BranchPicker(profile: widget.profile),
         1 => OpenMatchesScreen(profile: widget.profile),
-        2 => MyBookingsScreen(profile: widget.profile),
+        2 => TournamentsScreen(profile: widget.profile),
+        3 => MyBookingsScreen(profile: widget.profile),
         _ => ProfileScreen(profile: widget.profile),
       },
       bottomNavigationBar: NavigationBar(
@@ -68,6 +71,8 @@ class _CustomerHomeState extends State<CustomerHome> {
               icon: const Icon(Icons.sports_tennis), label: l10n.bookTab),
           const NavigationDestination(
               icon: Icon(Icons.group_add), label: 'Matches'),
+          const NavigationDestination(
+              icon: Icon(Icons.emoji_events), label: 'Events'),
           NavigationDestination(
               icon: const Icon(Icons.event_note), label: l10n.myBookingsTab),
           const NavigationDestination(

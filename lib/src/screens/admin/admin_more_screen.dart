@@ -4,6 +4,7 @@ import '../../theme.dart';
 import 'customers_screen.dart';
 import 'pricing_screen.dart';
 import 'revenue_screen.dart';
+import 'tournaments_admin_screen.dart';
 
 /// Owner "More" menu: everything that isn't day-to-day reservations.
 class AdminMoreScreen extends StatelessWidget {
@@ -17,6 +18,8 @@ class AdminMoreScreen extends StatelessWidget {
       (Icons.bar_chart, 'Revenue', () =>
           const _Page(title: 'Revenue', child: RevenueScreen())),
       (Icons.people, 'Customers', () => const CustomersScreen()),
+      (Icons.emoji_events, 'Tournaments', () =>
+          const TournamentsAdminScreen()),
     ];
     return ListView(
       padding: const EdgeInsets.all(16),

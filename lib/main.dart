@@ -10,6 +10,7 @@ import 'src/screens/setup_required_screen.dart';
 import 'src/services/auth_service.dart';
 import 'src/services/firestore_service.dart';
 import 'src/services/notification_service.dart';
+import 'src/services/tournament_service.dart';
 import 'src/theme.dart';
 
 Future<void> main() async {
@@ -55,6 +56,7 @@ class PadelApp extends StatelessWidget {
         Provider(create: (_) => AuthService()),
         Provider(create: (_) => FirestoreService()),
         Provider(create: (_) => NotificationService()),
+        Provider(create: (_) => TournamentService()),
       ],
       child: app,
     );
