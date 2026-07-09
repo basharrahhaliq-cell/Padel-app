@@ -34,9 +34,7 @@ more than enough to start.
    optional (you can say no) → **Create project**.
 3. In the left menu open **Build → Authentication → Get started**:
    - Enable **Email/Password**.
-   - Enable **Phone** (for SMS-code login). Note: SMS login is free for
-     small volumes but requires the paid "Blaze" plan for production use —
-     you can launch with Email only and turn Phone on later.
+   - Enable **Google** (one-tap Google sign-in; free on every plan).
 4. Open **Build → Firestore Database → Create database** → choose
    **Production mode** → pick the region closest to Lebanon
    (`europe-west1` is a good choice) → **Enable**.
@@ -58,6 +56,44 @@ flutterfire configure
 - It automatically rewrites `lib/firebase_options.dart` with your project's
   keys and registers the Android/iOS apps in Firebase. That's the entire
   connection — no other file needs editing.
+
+**For Google sign-in on Android** (one extra step): Firebase needs your
+computer's "signing fingerprint". In the project folder run:
+
+```
+cd android && ./gradlew signingReport && cd ..
+```
+
+Copy the `SHA1:` line of the `debug` variant, then in the Firebase console:
+Project settings (gear icon) → Your apps → the Android app → **Add
+fingerprint** → paste → Save, and run `flutterfire configure` once more.
+(When you later publish to Google Play, also add the SHA-1 shown in Play
+Console → Setup → App signing the same way.)
+
+## Part 2b — Deploy the server code (Cloud Functions, ~15 minutes)
+
+Push notifications to other people (open matches, tournaments, results)
+and automatic XP awarding run on Firebase's servers, from the `functions/`
+folder of this project.
+
+1. **Upgrade the Firebase project to the Blaze plan** (Firebase console →
+   bottom-left "Upgrade"). Blaze is pay-as-you-go with a generous free
+   monthly quota — at club scale the expected bill is **$0**, but a credit
+   card is required. Booking, pricing, and everything else in the app works
+   WITHOUT this — only the community pushes and XP need it.
+2. Install the Firebase command line and deploy:
+   ```
+   npm install -g firebase-tools
+   firebase login
+   firebase use <your-project-id>
+   cd functions && npm install && cd ..
+   firebase deploy --only functions,firestore:rules
+   ```
+3. That's it — this also publishes the database security rules, so you can
+   skip the copy-paste rules step above whenever you use this command.
+4. iOS only: for push notifications to reach iPhones, upload your **APNs
+   key** in Firebase console → Project settings → Cloud Messaging → Apple
+   app configuration (needs the Apple Developer account from Part 5).
 
 ## Part 3 — Run it on your own phone (~10 minutes)
 
@@ -86,6 +122,9 @@ General → VPN & Device Management.)
 5. Edit the base prices per court, and add your happy hour rules.
 6. Create a second account (different email) on another phone — or sign out —
    to experience the customer side and make a test booking.
+7. Optional first-time content, all under the owner **More** menu:
+   add your coaches and their weekly schedules (Academy), create voucher
+   codes, and put up a promo banner.
 
 ## Part 5 — Publishing to the stores (when you're ready)
 
@@ -114,19 +153,31 @@ General → VPN & Device Management.)
    **Organizer** and click **Distribute App → App Store Connect**.
 4. In https://appstoreconnect.apple.com: create the app, add screenshots
    and description, pick the build you uploaded, and submit for review.
-5. For phone-number login on iOS, also upload your **APNs key** in Firebase:
-   Firebase console → Project settings → Cloud Messaging → Apple app
-   configuration (Apple's docs walk you through creating the key).
+   The app's privacy policy screen (required by both stores) is built in.
 
 ## Everyday things you'll want to know
 
-- **Change prices / happy hours**: Owner app → Pricing tab. Old bookings keep
+- **Change prices / happy hours**: More → Pricing. Old bookings keep
   the price they were booked at.
 - **Block a court** (maintenance, private event): Dashboard tab → the ⊘
   button next to the date.
 - **Cancel any booking**: Dashboard tab → trash icon on the booking.
 - **See the day at a glance**: Day view tab — one row per court, 8 AM–11 PM.
-- **Revenue**: Revenue tab — today + this week, per branch.
+- **Revenue**: More → Revenue — today + this week per branch, with academy
+  lessons broken out.
+- **Customers list + CSV export**: More → Customers (sortable by most
+  active; the CSV button opens the share sheet).
+- **Vouchers**: More → Vouchers — create codes, toggle them, see usage.
+- **Promo banners**: More → Promo banners — cards shown on customers' home.
+- **Tournaments**: More → Tournaments — create/publish (sends the push),
+  manage entries and the waitlist, block courts, generate Americano rounds
+  or the knockout bracket, enter scores, finish & announce results.
+- **Academy**: More → Academy — manage coaches, prices, weekly schedules,
+  and which court each branch uses for lessons.
+- **Open matches**: created by customers from their own bookings; they show
+  on your dashboard with an "OPEN MATCH" tag and the joined players.
+- **XP**: awarded automatically by the server an hour or so after games
+  happen — nothing for you to do.
 - **Add Arabic later**: all app text lives in `lib/l10n/app_en.arb`. Create
   `app_ar.arb` next to it with the same keys translated, add `Locale('ar')`
   in `lib/main.dart`, and Flutter does the rest (including right-to-left).

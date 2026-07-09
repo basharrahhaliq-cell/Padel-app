@@ -11,21 +11,37 @@ to the App Store / Google Play.
 ## What it does
 
 **Customers**
-- Sign up with email or phone (SMS code)
+- Sign up with email/password or Google (profile requires a validated
+  Lebanese phone number, padel level A–D, marketing consent choice)
 - Book in seconds: branch → court → date → duration (60/90/120 min) → time
 - Only start times where the *full* game fits (8 AM–11 PM, 30-min steps) are shown
-- Exact price on every slot, happy-hour slots tagged 🎉
+- Exact price on every slot, happy-hour slots tagged 🎉; voucher codes at checkout
+- Open Matches: publish a booking as "needs players", browse and join by
+  level — with push notifications
+- Tournaments: register (Americano solo / Knockout teams), waitlist, live
+  standings & bracket, results archive
+- Academy: browse coaches and book private/semi-private/group lessons
+- XP levels with progress bar (separate from skill level)
 - "My bookings" with cancellation up to 3 hours before the game
 - Automatic reminder notification 2 hours before each game
 - Payment at the club (structure ready for online payment later)
 
 **Owner (admin role)**
-- Dashboard of all reservations, filterable by branch/court/date
+- Dashboard of all reservations (open-match / lesson / voucher tags),
+  filterable by branch/court/date
 - Day view: timeline grid per court showing booked ranges and gaps
 - Edit base prices per court per duration; create/toggle happy hour rules
-  (percent off or fixed price; by branch, courts, weekdays, time window)
+- Vouchers (usage stats), promo banners, customers list with CSV export
+- Tournaments: publish (push to matching levels), entries & waitlist,
+  court blocking, score entry, automatic standings, results announcement
+- Academy: coaches, prices, weekly availability, lesson court per branch
 - Cancel any booking; block time ranges for maintenance/events
-- Expected revenue per branch, per day and week
+- Expected revenue per branch per day/week, lessons broken out
+
+**Server (functions/, Firebase Cloud Functions — Blaze plan)**
+- Push notifications: open match created/full/cancelled, tournament
+  published/registered/waitlist-promoted/results, day-before reminders
+- XP awarding after game time passes (and removal on late cancellation)
 
 **Under the hood**
 - Double bookings are impossible: every booking runs a Firestore
