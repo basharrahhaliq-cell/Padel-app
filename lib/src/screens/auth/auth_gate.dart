@@ -6,6 +6,7 @@ import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../admin/admin_home.dart';
 import '../customer/customer_home.dart';
+import 'complete_profile_screen.dart';
 import 'login_screen.dart';
 
 /// Decides which world you land in:
@@ -28,8 +29,24 @@ class AuthGate extends StatelessWidget {
         return StreamBuilder<AppUser?>(
           stream: auth.profileOf(user.uid),
           builder: (context, profileSnap) {
-            if (!profileSnap.hasData) return const _Splash();
-            final profile = profileSnap.data!;
+            if (profileSnap.connectionState == ConnectionState.waiting) {
+              return const _Splash();
+            }
+            final profile = profileSnap.data;
+            // Google sign-ins land here before their Firestore profile
+            // exists or has a phone/level — collect what's missing.
+            if (profile == null || (!profile.isAdmin && !profile.isComplete)) {
+              return CompleteProfileScreen(
+                profile: profile ??
+                    AppUser(
+                      uid: user.uid,
+                      name: user.displayName ?? '',
+                      phone: '',
+                      email: user.email ?? '',
+                      role: 'customer',
+                    ),
+              );
+            }
             return profile.isAdmin
                 ? AdminHome(profile: profile)
                 : CustomerHome(profile: profile);

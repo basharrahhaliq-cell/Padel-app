@@ -1,10 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/app_user.dart';
 
-/// Sign-up / login with email+password or phone OTP, and the Firestore
-/// user profile (name, phone, role) that goes with the Firebase account.
+/// Sign-up / login with email+password or Google, plus the Firestore user
+/// profile (name, phone, skill level, role) that goes with the account.
+///
+/// Phone/SMS *login* was removed (it requires the paid Firebase plan), but
+/// every profile still carries a required, validated Lebanese phone number
+/// so the owner can always reach the customer about a booking.
 class AuthService {
   final FirebaseAuth _auth;
   final FirebaseFirestore _db;
@@ -37,44 +42,36 @@ class AuthService {
   Future<void> signInWithEmail(String email, String password) =>
       _auth.signInWithEmailAndPassword(email: email, password: password);
 
-  /// Phone auth step 1: sends the SMS code. Callbacks mirror Firebase's:
-  /// [onCodeSent] receives the verificationId needed for step 2.
-  Future<void> startPhoneSignIn({
-    required String phoneNumber,
-    required void Function(String verificationId) onCodeSent,
-    required void Function(String message) onError,
-    required void Function() onAutoVerified,
-  }) async {
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: (credential) async {
-        final cred = await _auth.signInWithCredential(credential);
-        await _ensureProfile(cred.user!, phone: phoneNumber);
-        onAutoVerified();
-      },
-      verificationFailed: (e) => onError(e.message ?? e.code),
-      codeSent: (verificationId, _) => onCodeSent(verificationId),
-      codeAutoRetrievalTimeout: (_) {},
-    );
+  /// Google sign-in. Creates the profile on first login; the phone number
+  /// is collected right after by the "complete profile" screen (AuthGate
+  /// routes there while the profile has no phone).
+  Future<void> signInWithGoogle() async {
+    final google = GoogleSignIn.instance;
+    await google.initialize();
+    final account = await google.authenticate();
+    final idToken = account.authentication.idToken;
+    final credential = GoogleAuthProvider.credential(idToken: idToken);
+    final cred = await _auth.signInWithCredential(credential);
+    await _ensureProfile(cred.user!,
+        name: account.displayName ?? '', email: account.email);
   }
 
-  /// Phone auth step 2: confirms the SMS code the user typed.
-  Future<void> confirmSmsCode({
-    required String verificationId,
-    required String smsCode,
-    required String name,
-    required String phone,
-  }) async {
-    final credential = PhoneAuthProvider.credential(
-        verificationId: verificationId, smsCode: smsCode);
-    final cred = await _auth.signInWithCredential(credential);
-    await _ensureProfile(cred.user!, name: name, phone: phone);
-  }
+  /// Fills in profile fields (used by the complete-profile screen and the
+  /// profile/settings screen). Only the provided fields change.
+  Future<void> updateProfile(String uid, Map<String, dynamic> fields) =>
+      _db.collection('users').doc(uid).update(fields);
 
   Future<void> resetPassword(String email) =>
       _auth.sendPasswordResetEmail(email: email);
 
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() async {
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {
+      // Not signed in with Google — nothing to do.
+    }
+    await _auth.signOut();
+  }
 
   /// Creates the users/{uid} profile on first login; never downgrades an
   /// existing profile (so a manually granted admin role is preserved).
@@ -84,17 +81,25 @@ class AuthService {
     final snap = await ref.get();
     if (snap.exists) {
       final updates = <String, dynamic>{};
-      if (name != null && name.isNotEmpty) updates['name'] = name;
+      final existing = snap.data() ?? {};
+      if (name != null &&
+          name.isNotEmpty &&
+          (existing['name'] as String? ?? '').isEmpty) {
+        updates['name'] = name;
+      }
       if (phone != null && phone.isNotEmpty) updates['phone'] = phone;
       if (updates.isNotEmpty) await ref.update(updates);
       return;
     }
-    await ref.set(AppUser(
-      uid: user.uid,
-      name: name ?? '',
-      phone: phone ?? user.phoneNumber ?? '',
-      email: email ?? user.email ?? '',
-      role: 'customer',
-    ).toMap());
+    await ref.set({
+      ...AppUser(
+        uid: user.uid,
+        name: name ?? '',
+        phone: phone ?? '',
+        email: email ?? user.email ?? '',
+        role: 'customer',
+      ).toMap(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 }

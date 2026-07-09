@@ -45,6 +45,9 @@ dependencies:
   flutter_timezone: ^5.1.0
   flutter_localizations:
     sdk: flutter
+  google_sign_in: ^7.2.0
+  share_plus: ^13.2.0
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

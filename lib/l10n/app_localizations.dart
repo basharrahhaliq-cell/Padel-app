@@ -130,18 +130,6 @@ abstract class AppLocalizations {
   /// **'Sign out'**
   String get signOut;
 
-  /// No description provided for @emailTab.
-  ///
-  /// In en, this message translates to:
-  /// **'Email'**
-  String get emailTab;
-
-  /// No description provided for @phoneTab.
-  ///
-  /// In en, this message translates to:
-  /// **'Phone'**
-  String get phoneTab;
-
   /// No description provided for @nameLabel.
   ///
   /// In en, this message translates to:
@@ -157,7 +145,7 @@ abstract class AppLocalizations {
   /// No description provided for @phoneHint.
   ///
   /// In en, this message translates to:
-  /// **'+961 3 123 456'**
+  /// **'03 123 456'**
   String get phoneHint;
 
   /// No description provided for @emailLabel.
@@ -196,29 +184,77 @@ abstract class AppLocalizations {
   /// **'Already have an account? Sign in'**
   String get haveAccount;
 
-  /// No description provided for @sendCode.
+  /// No description provided for @continueWithGoogle.
   ///
   /// In en, this message translates to:
-  /// **'Send code'**
-  String get sendCode;
+  /// **'Continue with Google'**
+  String get continueWithGoogle;
 
-  /// No description provided for @smsCodeLabel.
+  /// No description provided for @invalidPhone.
   ///
   /// In en, this message translates to:
-  /// **'SMS code'**
-  String get smsCodeLabel;
+  /// **'Please enter a valid Lebanese phone number (e.g. 03 123 456).'**
+  String get invalidPhone;
 
-  /// No description provided for @verifyCode.
+  /// No description provided for @skillLevelLabel.
   ///
   /// In en, this message translates to:
-  /// **'Verify'**
-  String get verifyCode;
+  /// **'Your padel level'**
+  String get skillLevelLabel;
 
-  /// No description provided for @codeSentTo.
+  /// No description provided for @levelA.
   ///
   /// In en, this message translates to:
-  /// **'We sent a code to {phone}'**
-  String codeSentTo(String phone);
+  /// **'A — Advanced'**
+  String get levelA;
+
+  /// No description provided for @levelB.
+  ///
+  /// In en, this message translates to:
+  /// **'B — Intermediate'**
+  String get levelB;
+
+  /// No description provided for @levelC.
+  ///
+  /// In en, this message translates to:
+  /// **'C — Beginner–Intermediate'**
+  String get levelC;
+
+  /// No description provided for @levelD.
+  ///
+  /// In en, this message translates to:
+  /// **'D — Beginner'**
+  String get levelD;
+
+  /// No description provided for @marketingConsentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Send me news, offers, and tournament invites'**
+  String get marketingConsentLabel;
+
+  /// No description provided for @completeProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete your profile'**
+  String get completeProfileTitle;
+
+  /// No description provided for @completeProfileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Just a couple of details so the club can reach you about your bookings.'**
+  String get completeProfileHint;
+
+  /// No description provided for @continueButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueButton;
+
+  /// No description provided for @privacyPolicyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get privacyPolicyTitle;
 
   /// No description provided for @fillAllFields.
   ///
