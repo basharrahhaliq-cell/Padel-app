@@ -38,6 +38,10 @@ class Booking {
   /// game time has passed).
   final bool xpAwarded;
 
+  /// Voucher applied at checkout (if any) and how much it saved.
+  final String? voucherCode;
+  final double voucherDiscount;
+
   const Booking({
     required this.id,
     required this.branchId,
@@ -60,6 +64,8 @@ class Booking {
     this.isOpenMatch = false,
     this.openMatchId,
     this.xpAwarded = false,
+    this.voucherCode,
+    this.voucherDiscount = 0,
   });
 
   int get endMinutes => startMinutes + durationMinutes;
@@ -92,6 +98,8 @@ class Booking {
       isOpenMatch: (data['isOpenMatch'] as bool?) ?? false,
       openMatchId: data['openMatchId'] as String?,
       xpAwarded: (data['xpAwarded'] as bool?) ?? false,
+      voucherCode: data['voucherCode'] as String?,
+      voucherDiscount: (data['voucherDiscount'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -117,5 +125,7 @@ class Booking {
         'isOpenMatch': isOpenMatch,
         'openMatchId': openMatchId,
         'xpAwarded': false,
+        'voucherCode': voucherCode,
+        'voucherDiscount': voucherDiscount,
       };
 }

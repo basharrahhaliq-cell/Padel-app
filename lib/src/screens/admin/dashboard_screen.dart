@@ -121,6 +121,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           '${b.branchName} · ${b.courtName}\n'
                           '${formatMinutes(b.startMinutes)} – ${formatMinutes(b.endMinutes)}'
                           '${b.isBlock ? '' : ' · ${b.userPhone}'}'
+                          '${b.voucherCode != null ? ' · ${b.voucherCode}' : ''}'
                           '${matchByBooking.containsKey(b.id) ? '\nPlayers: ${matchByBooking[b.id]!.allPlayerNames.join(', ')}' : ''}',
                         ),
                         isThreeLine: true,

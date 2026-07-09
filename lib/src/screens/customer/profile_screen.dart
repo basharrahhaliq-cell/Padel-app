@@ -10,6 +10,7 @@ import '../../utils/xp.dart';
 import '../auth/login_screen.dart' show levelName;
 import '../contact_us_screen.dart';
 import '../privacy_policy_screen.dart';
+import 'vouchers_list_screen.dart';
 
 /// Customer profile: personal details, padel level, XP progress,
 /// notification/marketing preferences, and app links.
@@ -172,6 +173,15 @@ class ProfileScreen extends StatelessWidget {
         Card(
           child: Column(
             children: [
+              ListTile(
+                leading: const Icon(Icons.confirmation_number,
+                    color: AppTheme.courtBlue),
+                title: const Text('Vouchers'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const VouchersListScreen())),
+              ),
+              const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.chat, color: AppTheme.courtBlue),
                 title: Text(context.l10n.contactUsTitle),

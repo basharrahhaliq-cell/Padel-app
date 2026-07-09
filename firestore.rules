@@ -84,6 +84,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Vouchers: customers read them (to browse and apply) and the booking
+    // transaction may only bump the usage counters; owner manages them.
+    match /vouchers/{code} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['uses', 'totalDiscount', 'usesByUser']));
+    }
+
     // Tournaments: everyone signed in reads; the owner manages them.
     // Customers may register themselves (entry create with their own uid)
     // and the tournament's counters move only via the register transaction.

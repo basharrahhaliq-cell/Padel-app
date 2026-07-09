@@ -5,6 +5,7 @@ import '../models/branch.dart';
 import '../models/court.dart';
 import '../models/happy_hour_rule.dart';
 import '../models/open_match.dart';
+import '../models/voucher.dart';
 import '../utils/slot_engine.dart';
 import '../utils/time_utils.dart';
 
@@ -13,6 +14,13 @@ class SlotTakenException implements Exception {}
 
 /// Thrown when trying to cancel later than the allowed cutoff.
 class TooLateToCancelException implements Exception {}
+
+/// Thrown when a voucher fails validation inside the booking transaction.
+class VoucherRejectedException implements Exception {
+  final String reason;
+
+  VoucherRejectedException(this.reason);
+}
 
 /// All Firestore reads/writes in one place.
 ///
@@ -106,18 +114,42 @@ class FirestoreService {
   /// Creates a booking atomically. Inside the transaction we re-read the
   /// day sheet and re-check for overlap; if someone else booked the same
   /// range a moment earlier, we throw [SlotTakenException] and nothing is
-  /// written.
+  /// written. When [booking.voucherCode] is set, the voucher is
+  /// re-validated and its usage counters updated in the same transaction.
   Future<String> createBooking(Booking booking) async {
     final bookingRef = _db.collection('bookings').doc();
     final dayRef =
         _dayRef(booking.branchId, booking.courtId, booking.date);
+    final voucherRef = booking.voucherCode == null
+        ? null
+        : _db.collection('vouchers').doc(booking.voucherCode);
 
     await _db.runTransaction((tx) async {
       final daySnap = await tx.get(dayRef);
+      Voucher? voucher;
+      if (voucherRef != null) {
+        final vSnap = await tx.get(voucherRef);
+        if (!vSnap.exists) {
+          throw VoucherRejectedException('Unknown voucher code.');
+        }
+        voucher = Voucher.fromDoc(vSnap);
+        final reason =
+            voucher.rejectionReason(booking.userId, booking.branchId);
+        if (reason != null) throw VoucherRejectedException(reason);
+      }
+
       final intervals = intervalsFromDay(daySnap.data());
       final clash = intervals
           .any((b) => b.overlaps(booking.startMinutes, booking.endMinutes));
       if (clash) throw SlotTakenException();
+
+      if (voucherRef != null && voucher != null) {
+        tx.update(voucherRef, {
+          'uses': FieldValue.increment(1),
+          'totalDiscount': FieldValue.increment(booking.voucherDiscount),
+          'usesByUser.${booking.userId}': FieldValue.increment(1),
+        });
+      }
 
       tx.set(bookingRef, booking.toMap());
       tx.set(
@@ -169,6 +201,41 @@ class FirestoreService {
       }
     });
   }
+
+  // ---------- Vouchers ----------
+
+  Stream<List<Voucher>> vouchers() => _db
+      .collection('vouchers')
+      .snapshots()
+      .map((s) => s.docs.map(Voucher.fromDoc).toList());
+
+  /// One-shot lookup for the checkout "Apply" button (final validation
+  /// happens again inside the booking transaction).
+  Future<Voucher?> voucherByCode(String code) async {
+    final snap = await _db
+        .collection('vouchers')
+        .doc(code.trim().toUpperCase())
+        .get();
+    return snap.exists ? Voucher.fromDoc(snap) : null;
+  }
+
+  Future<void> saveVoucher(Voucher v) {
+    // Never clobber live usage counters when the owner edits a voucher.
+    final map = v.toMap()
+      ..remove('uses')
+      ..remove('totalDiscount')
+      ..remove('usesByUser');
+    return _db
+        .collection('vouchers')
+        .doc(v.code.trim().toUpperCase())
+        .set(map, SetOptions(merge: true));
+  }
+
+  Future<void> setVoucherActive(String code, bool active) =>
+      _db.collection('vouchers').doc(code).update({'active': active});
+
+  Future<void> deleteVoucher(String code) =>
+      _db.collection('vouchers').doc(code).delete();
 
   // ---------- Open matches ----------
 
