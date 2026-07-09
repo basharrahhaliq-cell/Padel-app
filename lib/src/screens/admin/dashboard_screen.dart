@@ -114,9 +114,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         title: Text(b.isBlock
                             ? '${l10n.blockedLabel} — ${b.note ?? ''}'
-                            : b.isOpenMatch
-                                ? '${b.userName}  ·  OPEN MATCH'
-                                : b.userName),
+                            : b.isLesson
+                                ? '${b.userName} · LESSON with ${b.coachName}'
+                                : b.isOpenMatch
+                                    ? '${b.userName}  ·  OPEN MATCH'
+                                    : b.userName),
                         subtitle: Text(
                           '${b.branchName} · ${b.courtName}\n'
                           '${formatMinutes(b.startMinutes)} – ${formatMinutes(b.endMinutes)}'

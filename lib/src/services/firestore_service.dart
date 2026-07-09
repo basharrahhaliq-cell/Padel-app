@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/banner_item.dart';
 import '../models/booking.dart';
 import '../models/branch.dart';
+import '../models/coach.dart';
 import '../models/court.dart';
 import '../models/happy_hour_rule.dart';
 import '../models/open_match.dart';
@@ -187,20 +188,161 @@ class FirestoreService {
     final dayRef =
         _dayRef(booking.branchId, booking.courtId, booking.date);
 
+    final coachRef = booking.isLesson && booking.coachId != null
+        ? _coachDayRef(booking.coachId!, booking.date)
+        : null;
+
     await _db.runTransaction((tx) async {
+      // Firestore requires all reads before any writes.
       final daySnap = await tx.get(dayRef);
-      final raw = List<Map<String, dynamic>>.from(
-          ((daySnap.data()?['intervals'] as List?) ?? const [])
-              .map((e) => Map<String, dynamic>.from(e)));
-      raw.removeWhere((e) => e['bookingId'] == booking.id);
-      tx.update(dayRef, {'intervals': raw});
+      final coachSnap = coachRef == null ? null : await tx.get(coachRef);
+
+      List<Map<String, dynamic>> withoutThisBooking(
+              Map<String, dynamic>? data) =>
+          List<Map<String, dynamic>>.from(
+              ((data?['intervals'] as List?) ?? const [])
+                  .map((e) => Map<String, dynamic>.from(e)))
+            ..removeWhere((e) => e['bookingId'] == booking.id);
+
+      tx.update(dayRef, {'intervals': withoutThisBooking(daySnap.data())});
       tx.update(bookingRef, {'status': 'cancelled'});
       // An open match can't survive without its court.
       if (booking.openMatchId != null) {
         tx.update(_db.collection('openMatches').doc(booking.openMatchId!),
             {'status': 'cancelled'});
       }
+      // A cancelled lesson frees the coach too.
+      if (coachRef != null) {
+        tx.set(
+            coachRef,
+            {'intervals': withoutThisBooking(coachSnap?.data())},
+            SetOptions(merge: true));
+      }
     });
+  }
+
+  // ---------- Academy (coaches & lessons) ----------
+
+  Stream<List<Coach>> coaches() =>
+      _db.collection('coaches').snapshots().map((s) {
+        final list = s.docs.map(Coach.fromDoc).toList();
+        list.sort((a, b) => a.name.compareTo(b.name));
+        return list;
+      });
+
+  Future<void> saveCoach(Coach coach) {
+    final col = _db.collection('coaches');
+    final doc = coach.id.isEmpty ? col.doc() : col.doc(coach.id);
+    return doc.set(coach.toMap());
+  }
+
+  Future<void> deleteCoach(String id) =>
+      _db.collection('coaches').doc(id).delete();
+
+  /// Which court lessons use at this branch ('' = any free court).
+  Future<void> setLessonCourt(String branchId, String courtId) =>
+      _db.collection('branches').doc(branchId).update(
+          {'lessonCourtId': courtId});
+
+  DocumentReference<Map<String, dynamic>> _coachDayRef(
+          String coachId, String date) =>
+      _db.collection('coachDays').doc('${coachId}_$date');
+
+  /// Lesson session length in minutes.
+  static const int lessonMinutes = 60;
+
+  /// Available lesson start times for a coach on a date at a branch:
+  /// inside the coach's weekly windows, coach not already teaching, and a
+  /// court free — the branch's lesson court if the owner assigned one,
+  /// otherwise any free court. Returns (startMinutes, court) pairs.
+  Future<List<(int, Court)>> lessonSlots({
+    required Coach coach,
+    required Branch branch,
+    required List<Court> courts,
+    required String date,
+  }) async {
+    final windows = coach.availability[weekdayOf(date)] ?? const [];
+    if (windows.isEmpty || courts.isEmpty) return const [];
+
+    final candidateCourts = branch.lessonCourtId.isEmpty
+        ? courts
+        : courts.where((c) => c.id == branch.lessonCourtId).toList();
+    if (candidateCourts.isEmpty) return const [];
+
+    // One read per court + one for the coach's day.
+    final courtBusy = <String, List<BusyInterval>>{};
+    for (final court in candidateCourts) {
+      final snap = await _dayRef(branch.id, court.id, date).get();
+      courtBusy[court.id] = intervalsFromDay(snap.data());
+    }
+    final coachSnap = await _coachDayRef(coach.id, date).get();
+    final coachBusy = intervalsFromDay(coachSnap.data());
+
+    final now = DateTime.now();
+    final isToday = dateKey(now) == date;
+    final notBefore = isToday ? now.hour * 60 + now.minute : 0;
+
+    final slots = <(int, Court)>[];
+    for (int start = ClubHours.openMinutes;
+        start + lessonMinutes <= ClubHours.closeMinutes;
+        start += ClubHours.slotStepMinutes) {
+      if (start < notBefore) continue;
+      final end = start + lessonMinutes;
+      final inWindow =
+          windows.any((w) => start >= w.start && end <= w.end);
+      if (!inWindow) continue;
+      if (coachBusy.any((b) => b.overlaps(start, end))) continue;
+      final court = candidateCourts
+          .where((c) =>
+              !courtBusy[c.id]!.any((b) => b.overlaps(start, end)))
+          .firstOrNull;
+      if (court != null) slots.add((start, court));
+    }
+    return slots;
+  }
+
+  /// Books a lesson atomically: reserves the court AND the coach in one
+  /// transaction, so neither can be double-booked.
+  Future<String> createLessonBooking(Booking booking) async {
+    assert(booking.isLesson && booking.coachId != null);
+    final bookingRef = _db.collection('bookings').doc();
+    final dayRef = _dayRef(booking.branchId, booking.courtId, booking.date);
+    final coachRef = _coachDayRef(booking.coachId!, booking.date);
+
+    await _db.runTransaction((tx) async {
+      final daySnap = await tx.get(dayRef);
+      final coachSnap = await tx.get(coachRef);
+      final courtClash = intervalsFromDay(daySnap.data())
+          .any((b) => b.overlaps(booking.startMinutes, booking.endMinutes));
+      final coachClash = intervalsFromDay(coachSnap.data())
+          .any((b) => b.overlaps(booking.startMinutes, booking.endMinutes));
+      if (courtClash || coachClash) throw SlotTakenException();
+
+      final interval = {
+        'start': booking.startMinutes,
+        'end': booking.endMinutes,
+        'bookingId': bookingRef.id,
+      };
+      tx.set(bookingRef, booking.toMap());
+      tx.set(
+          dayRef,
+          {
+            'branchId': booking.branchId,
+            'courtId': booking.courtId,
+            'date': booking.date,
+            'intervals': FieldValue.arrayUnion([interval]),
+          },
+          SetOptions(merge: true));
+      tx.set(
+          coachRef,
+          {
+            'coachId': booking.coachId,
+            'date': booking.date,
+            'intervals': FieldValue.arrayUnion([interval]),
+          },
+          SetOptions(merge: true));
+    });
+    return bookingRef.id;
   }
 
   // ---------- Promo banners ----------

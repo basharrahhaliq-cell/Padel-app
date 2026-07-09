@@ -30,10 +30,14 @@ class _RevenueScreenState extends State<RevenueScreen> {
 
     final dayTotals = <String, double>{};
     final weekTotals = <String, double>{};
+    double dayLessons = 0;
+    double weekLessons = 0;
     for (final b in real) {
       weekTotals[b.branchName] = (weekTotals[b.branchName] ?? 0) + b.price;
+      if (b.isLesson) weekLessons += b.price;
       if (b.date == dateKey(_date)) {
         dayTotals[b.branchName] = (dayTotals[b.branchName] ?? 0) + b.price;
+        if (b.isLesson) dayLessons += b.price;
       }
     }
     return _RevenueData(
@@ -41,6 +45,8 @@ class _RevenueScreenState extends State<RevenueScreen> {
       weekTotals: weekTotals,
       dayCount: real.where((b) => b.date == dateKey(_date)).length,
       weekCount: real.length,
+      dayLessons: dayLessons,
+      weekLessons: weekLessons,
       monday: monday,
       sunday: sunday,
     );
@@ -90,6 +96,7 @@ class _RevenueScreenState extends State<RevenueScreen> {
                     '${DateFormat.MMMEd().format(_date)}',
                 totals: data.dayTotals,
                 count: data.dayCount,
+                lessons: data.dayLessons,
                 money: money,
               ),
               const SizedBox(height: 12),
@@ -99,6 +106,7 @@ class _RevenueScreenState extends State<RevenueScreen> {
                     '${DateFormat.MMMd().format(data.monday)} – ${DateFormat.MMMd().format(data.sunday)}',
                 totals: data.weekTotals,
                 count: data.weekCount,
+                lessons: data.weekLessons,
                 money: money,
               ),
               const SizedBox(height: 12),
@@ -116,6 +124,7 @@ class _RevenueScreenState extends State<RevenueScreen> {
       {required String title,
       required Map<String, double> totals,
       required int count,
+      required double lessons,
       required NumberFormat money}) {
     final l10n = context.l10n;
     final grand = totals.values.fold<double>(0, (a, b) => a + b);
@@ -137,6 +146,21 @@ class _RevenueScreenState extends State<RevenueScreen> {
                     Text(money.format(entry.value),
                         style:
                             const TextStyle(fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            if (lessons > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('of which academy lessons',
+                        style: TextStyle(
+                            color: Colors.grey.shade600, fontSize: 13)),
+                    Text(money.format(lessons),
+                        style: TextStyle(
+                            color: Colors.grey.shade700, fontSize: 13)),
                   ],
                 ),
               ),
@@ -166,6 +190,8 @@ class _RevenueData {
   final Map<String, double> weekTotals;
   final int dayCount;
   final int weekCount;
+  final double dayLessons;
+  final double weekLessons;
   final DateTime monday;
   final DateTime sunday;
 
@@ -174,6 +200,8 @@ class _RevenueData {
     required this.weekTotals,
     required this.dayCount,
     required this.weekCount,
+    required this.dayLessons,
+    required this.weekLessons,
     required this.monday,
     required this.sunday,
   });

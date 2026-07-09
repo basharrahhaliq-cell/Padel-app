@@ -42,6 +42,12 @@ class Booking {
   final String? voucherCode;
   final double voucherDiscount;
 
+  /// Academy lesson fields (the student is userId/userName).
+  final bool isLesson;
+  final String? coachId;
+  final String? coachName;
+  final String? sessionType; // private | semi | group
+
   const Booking({
     required this.id,
     required this.branchId,
@@ -66,6 +72,10 @@ class Booking {
     this.xpAwarded = false,
     this.voucherCode,
     this.voucherDiscount = 0,
+    this.isLesson = false,
+    this.coachId,
+    this.coachName,
+    this.sessionType,
   });
 
   int get endMinutes => startMinutes + durationMinutes;
@@ -100,6 +110,10 @@ class Booking {
       xpAwarded: (data['xpAwarded'] as bool?) ?? false,
       voucherCode: data['voucherCode'] as String?,
       voucherDiscount: (data['voucherDiscount'] as num?)?.toDouble() ?? 0,
+      isLesson: (data['isLesson'] as bool?) ?? false,
+      coachId: data['coachId'] as String?,
+      coachName: data['coachName'] as String?,
+      sessionType: data['sessionType'] as String?,
     );
   }
 
@@ -127,5 +141,9 @@ class Booking {
         'xpAwarded': false,
         'voucherCode': voucherCode,
         'voucherDiscount': voucherDiscount,
+        'isLesson': isLesson,
+        'coachId': coachId,
+        'coachName': coachName,
+        'sessionType': sessionType,
       };
 }

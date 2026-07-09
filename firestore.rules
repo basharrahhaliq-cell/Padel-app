@@ -130,5 +130,18 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if signedIn();
     }
+
+    // Coaches: customers browse; the owner manages them.
+    match /coaches/{coachId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Coach day sheets — same trust model as courtDays (updated by the
+    // lesson booking transaction).
+    match /coachDays/{dayId} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
   }
 }

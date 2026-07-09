@@ -10,6 +10,7 @@ import '../../utils/xp.dart';
 import '../auth/login_screen.dart' show levelName;
 import '../contact_us_screen.dart';
 import '../privacy_policy_screen.dart';
+import 'my_bookings_screen.dart';
 import 'vouchers_list_screen.dart';
 
 /// Customer profile: personal details, padel level, XP progress,
@@ -144,6 +145,23 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading:
+                const Icon(Icons.event_note, color: AppTheme.courtBlue),
+            title: const Text('My bookings',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text('Upcoming and past games & lessons'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => Scaffold(
+                      appBar:
+                          AppBar(title: Text(context.l10n.myBookingsTab)),
+                      body: MyBookingsScreen(profile: profile),
+                    ))),
           ),
         ),
         const SizedBox(height: 8),

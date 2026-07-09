@@ -6,7 +6,15 @@ class Branch {
   final String name;
   final int order;
 
-  const Branch({required this.id, required this.name, required this.order});
+  /// Court the owner reserves for academy lessons at this branch.
+  /// Empty = lessons may use any court that is free.
+  final String lessonCourtId;
+
+  const Branch(
+      {required this.id,
+      required this.name,
+      required this.order,
+      this.lessonCourtId = ''});
 
   factory Branch.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
@@ -14,8 +22,10 @@ class Branch {
       id: doc.id,
       name: (data['name'] as String?) ?? doc.id,
       order: (data['order'] as num?)?.toInt() ?? 0,
+      lessonCourtId: (data['lessonCourtId'] as String?) ?? '',
     );
   }
 
-  Map<String, dynamic> toMap() => {'name': name, 'order': order};
+  Map<String, dynamic> toMap() =>
+      {'name': name, 'order': order, 'lessonCourtId': lessonCourtId};
 }
