@@ -6,6 +6,7 @@ import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../../theme.dart';
 import '../../utils/validators.dart';
+import '../../utils/xp.dart';
 import '../auth/login_screen.dart' show levelName;
 import '../contact_us_screen.dart';
 import '../privacy_policy_screen.dart';
@@ -145,6 +146,8 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
+        _XpCard(profile: profile),
+        const SizedBox(height: 8),
         Card(
           child: Column(
             children: [
@@ -195,6 +198,73 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// XP level, totals, and progress to the next level.
+class _XpCard extends StatelessWidget {
+  final AppUser profile;
+
+  const _XpCard({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final level = XpSystem.levelFor(profile.xp);
+    final progress = XpSystem.progress(profile.xp);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: AppTheme.courtBlue,
+                  child: Text('$level',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('XP Level $level',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 16)),
+                      Text(
+                          '${profile.xp} XP · '
+                          '${profile.matchesPlayed} matches played',
+                          style: TextStyle(
+                              color: Colors.grey.shade600, fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 10,
+                backgroundColor: Colors.blueGrey.shade50,
+                color: AppTheme.ballLime,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+                '${XpSystem.xpToNext(profile.xp)} XP to level ${level + 1} '
+                '— play more to increase your level!',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+          ],
+        ),
+      ),
     );
   }
 }

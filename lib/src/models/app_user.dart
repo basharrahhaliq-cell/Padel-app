@@ -23,6 +23,10 @@ class AppUser {
   /// "Notify me about open matches at my level" (on by default).
   final bool notifyOpenMatches;
 
+  /// Gamification — written only by the Cloud Function after games happen.
+  final int xp;
+  final int matchesPlayed;
+
   final DateTime? createdAt;
 
   const AppUser({
@@ -34,6 +38,8 @@ class AppUser {
     this.skillLevel = '',
     this.marketingConsent = false,
     this.notifyOpenMatches = true,
+    this.xp = 0,
+    this.matchesPlayed = 0,
     this.createdAt,
   });
 
@@ -54,6 +60,8 @@ class AppUser {
       skillLevel: (data['skillLevel'] as String?) ?? '',
       marketingConsent: (data['marketingConsent'] as bool?) ?? false,
       notifyOpenMatches: (data['notifyOpenMatches'] as bool?) ?? true,
+      xp: (data['xp'] as num?)?.toInt() ?? 0,
+      matchesPlayed: (data['matchesPlayed'] as num?)?.toInt() ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     );
   }
