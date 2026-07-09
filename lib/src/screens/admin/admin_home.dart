@@ -4,12 +4,11 @@ import 'package:provider/provider.dart';
 import '../../../main.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
+import 'admin_more_screen.dart';
 import 'dashboard_screen.dart';
 import 'day_grid_screen.dart';
-import 'pricing_screen.dart';
-import 'revenue_screen.dart';
 
-/// Owner home: Dashboard / Day view / Pricing / Revenue.
+/// Owner home: Dashboard / Day view / More (pricing, revenue, customers…).
 class AdminHome extends StatefulWidget {
   final AppUser profile;
 
@@ -28,8 +27,7 @@ class _AdminHomeState extends State<AdminHome> {
     final pages = const [
       DashboardScreen(),
       DayGridScreen(),
-      PricingScreen(),
-      RevenueScreen(),
+      AdminMoreScreen(),
     ];
     return Scaffold(
       appBar: AppBar(
@@ -51,10 +49,8 @@ class _AdminHomeState extends State<AdminHome> {
               icon: const Icon(Icons.list_alt), label: l10n.dashboardTab),
           NavigationDestination(
               icon: const Icon(Icons.grid_view), label: l10n.dayGridTab),
-          NavigationDestination(
-              icon: const Icon(Icons.attach_money), label: l10n.pricingTab),
-          NavigationDestination(
-              icon: const Icon(Icons.bar_chart), label: l10n.revenueTab),
+          const NavigationDestination(
+              icon: Icon(Icons.more_horiz), label: 'More'),
         ],
       ),
     );

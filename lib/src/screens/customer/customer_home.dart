@@ -9,6 +9,7 @@ import '../../services/firestore_service.dart';
 import '../../theme.dart';
 import 'booking_flow_screen.dart';
 import 'my_bookings_screen.dart';
+import 'profile_screen.dart';
 
 class CustomerHome extends StatefulWidget {
   final AppUser profile;
@@ -27,7 +28,11 @@ class _CustomerHomeState extends State<CustomerHome> {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        title: Text(_tab == 0 ? l10n.appTitle : l10n.myBookingsTab),
+        title: Text(switch (_tab) {
+          0 => l10n.appTitle,
+          1 => l10n.myBookingsTab,
+          _ => 'Profile',
+        }),
         actions: [
           IconButton(
             tooltip: l10n.signOut,
@@ -36,9 +41,11 @@ class _CustomerHomeState extends State<CustomerHome> {
           ),
         ],
       ),
-      body: _tab == 0
-          ? _BranchPicker(profile: widget.profile)
-          : MyBookingsScreen(profile: widget.profile),
+      body: switch (_tab) {
+        0 => _BranchPicker(profile: widget.profile),
+        1 => MyBookingsScreen(profile: widget.profile),
+        _ => ProfileScreen(profile: widget.profile),
+      },
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
@@ -47,6 +54,8 @@ class _CustomerHomeState extends State<CustomerHome> {
               icon: const Icon(Icons.sports_tennis), label: l10n.bookTab),
           NavigationDestination(
               icon: const Icon(Icons.event_note), label: l10n.myBookingsTab),
+          const NavigationDestination(
+              icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
