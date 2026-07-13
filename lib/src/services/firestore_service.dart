@@ -497,15 +497,19 @@ class FirestoreService {
   }
 
   /// Confirmed bookings in a date-key range (inclusive), for revenue.
+  /// The status filter runs client-side so the query stays a simple
+  /// single-field range (no composite index needed).
   Future<List<Booking>> bookingsBetween(
       String fromDate, String toDate) async {
     final s = await _db
         .collection('bookings')
-        .where('status', isEqualTo: 'confirmed')
         .where('date', isGreaterThanOrEqualTo: fromDate)
         .where('date', isLessThanOrEqualTo: toDate)
         .get();
-    return s.docs.map(Booking.fromDoc).toList();
+    return s.docs
+        .map(Booking.fromDoc)
+        .where((b) => b.status == BookingStatus.confirmed)
+        .toList();
   }
 
   // ---------- First-run seeding ----------

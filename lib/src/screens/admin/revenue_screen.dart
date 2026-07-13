@@ -77,6 +77,15 @@ class _RevenueScreenState extends State<RevenueScreen> {
       child: FutureBuilder<_RevenueData>(
         future: _future,
         builder: (context, snap) {
+          if (snap.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('Could not load revenue:\n${snap.error}',
+                    textAlign: TextAlign.center),
+              ),
+            );
+          }
           if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }

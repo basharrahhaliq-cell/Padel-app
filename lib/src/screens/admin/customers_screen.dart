@@ -13,7 +13,10 @@ import '../../theme.dart';
 /// Owner view of all registered customers with booking stats,
 /// sortable by activity, exportable as CSV.
 class CustomersScreen extends StatefulWidget {
-  const CustomersScreen({super.key});
+  /// Injectable for tests; defaults to the live database.
+  final FirebaseFirestore? firestore;
+
+  const CustomersScreen({super.key, this.firestore});
 
   @override
   State<CustomersScreen> createState() => _CustomersScreenState();
@@ -42,7 +45,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
   late Future<List<_CustomerRow>> _future = _load();
 
   Future<List<_CustomerRow>> _load() async {
-    final db = FirebaseFirestore.instance;
+    final db = widget.firestore ?? FirebaseFirestore.instance;
     final usersSnap = await db.collection('users').get();
     final bookingsSnap = await db
         .collection('bookings')
@@ -118,6 +121,15 @@ class _CustomersScreenState extends State<CustomersScreen> {
       body: FutureBuilder<List<_CustomerRow>>(
         future: _future,
         builder: (context, snap) {
+          if (snap.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('Could not load customers:\n${snap.error}',
+                    textAlign: TextAlign.center),
+              ),
+            );
+          }
           if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
