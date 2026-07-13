@@ -7,6 +7,7 @@ import 'package:padel_app/src/screens/admin/customers_screen.dart';
 import 'package:padel_app/src/screens/admin/pricing_screen.dart';
 import 'package:padel_app/src/screens/admin/revenue_screen.dart';
 import 'package:padel_app/src/services/firestore_service.dart';
+import 'package:padel_app/src/theme.dart';
 import 'package:provider/provider.dart';
 
 /// Renders the owner screens against a fake database seeded exactly like
@@ -61,6 +62,7 @@ Widget wrap(FakeFirebaseFirestore db, Widget child) => MultiProvider(
         Provider<FirestoreService>(create: (_) => FirestoreService(db)),
       ],
       child: MaterialApp(
+        theme: AppTheme.light(), // real club theme — catches theme bugs
         localizationsDelegates: const [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,

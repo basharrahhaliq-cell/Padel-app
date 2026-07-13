@@ -29,7 +29,9 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: courtBlue,
           foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(52),
+          // Fixed height but NOT infinite width — an infinite minimum
+          // width crashes any button placed inside a Row.
+          minimumSize: const Size(64, 52),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
