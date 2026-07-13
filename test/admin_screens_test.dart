@@ -4,10 +4,12 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:padel_app/l10n/app_localizations.dart';
 import 'package:padel_app/src/screens/admin/customers_screen.dart';
+import 'package:padel_app/src/screens/admin/dashboard_screen.dart';
 import 'package:padel_app/src/screens/admin/pricing_screen.dart';
 import 'package:padel_app/src/screens/admin/revenue_screen.dart';
 import 'package:padel_app/src/services/firestore_service.dart';
 import 'package:padel_app/src/theme.dart';
+import 'package:padel_app/src/utils/time_utils.dart';
 import 'package:provider/provider.dart';
 
 /// Renders the owner screens against a fake database seeded exactly like
@@ -40,7 +42,7 @@ Future<FakeFirebaseFirestore> seededDb() async {
     'courtId': 'court-1',
     'branchName': 'Airport Road',
     'courtName': 'Court 1',
-    'date': '2026-07-13',
+    'date': dateKey(DateTime.now()), // today, so the dashboard shows it
     'startMinutes': 18 * 60,
     'durationMinutes': 90,
     'endMinutes': 19 * 60 + 30,
@@ -92,6 +94,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Test Customer'), findsOneWidget);
     expect(find.textContaining('1 bookings'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Dashboard renders booking cards without overflow',
+      (tester) async {
+    final db = await seededDb();
+    await tester
+        .pumpWidget(wrap(db, const Scaffold(body: DashboardScreen())));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Test Customer'), findsOneWidget);
+    expect(find.textContaining('\$42.00'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

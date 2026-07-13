@@ -128,6 +128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         isThreeLine: true,
                         trailing: Column(
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -137,6 +138,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       fontWeight: FontWeight.bold,
                                       color: AppTheme.courtBlue)),
                             IconButton(
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                              constraints: const BoxConstraints(
+                                  minWidth: 36, minHeight: 30),
                               icon: const Icon(Icons.delete_outline,
                                   color: Colors.redAccent, size: 20),
                               onPressed: () => _cancelAsAdmin(b),
