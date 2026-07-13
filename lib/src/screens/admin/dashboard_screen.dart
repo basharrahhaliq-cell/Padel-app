@@ -127,26 +127,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           '${matchByBooking.containsKey(b.id) ? '\nPlayers: ${matchByBooking[b.id]!.allPlayerNames.join(', ')}' : ''}',
                         ),
                         isThreeLine: true,
-                        trailing: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (!b.isBlock)
-                              Text(money.format(b.price),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.courtBlue)),
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              visualDensity: VisualDensity.compact,
-                              constraints: const BoxConstraints(
-                                  minWidth: 36, minHeight: 30),
-                              icon: const Icon(Icons.delete_outline,
-                                  color: Colors.redAccent, size: 20),
-                              onPressed: () => _cancelAsAdmin(b),
-                            ),
-                          ],
+                        // FittedBox scales this corner down to whatever
+                        // space the tile has — immune to device font size.
+                        trailing: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              if (!b.isBlock)
+                                Text(money.format(b.price),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.courtBlue)),
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                                constraints: const BoxConstraints(
+                                    minWidth: 36, minHeight: 30),
+                                icon: const Icon(Icons.delete_outline,
+                                    color: Colors.redAccent, size: 20),
+                                onPressed: () => _cancelAsAdmin(b),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
