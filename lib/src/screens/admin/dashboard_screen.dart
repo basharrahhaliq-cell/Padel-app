@@ -192,6 +192,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String?>(
+                        isExpanded: true,
                         initialValue: _branchId,
                         isDense: true,
                         decoration: const InputDecoration(
@@ -214,6 +215,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Expanded(
                       child: _branchId == null
                           ? DropdownButtonFormField<String?>(
+                              isExpanded: true,
                               initialValue: null,
                               isDense: true,
                               decoration: const InputDecoration(
@@ -231,6 +233,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               builder: (context, courtSnap) {
                                 final courts = courtSnap.data ?? [];
                                 return DropdownButtonFormField<String?>(
+                                  isExpanded: true,
                                   initialValue: _courtId,
                                   isDense: true,
                                   decoration: const InputDecoration(

@@ -138,6 +138,7 @@ class _OpenMatchesScreenState extends State<OpenMatchesScreen> {
                 builder: (context, snap) {
                   final branches = snap.data ?? [];
                   return DropdownButtonFormField<String?>(
+                    isExpanded: true,
                     initialValue: _branchId,
                     isDense: true,
                     decoration: const InputDecoration(
@@ -158,6 +159,7 @@ class _OpenMatchesScreenState extends State<OpenMatchesScreen> {
             SizedBox(
               width: 90,
               child: DropdownButtonFormField<String?>(
+                isExpanded: true,
                 initialValue: _level,
                 isDense: true,
                 decoration: const InputDecoration(
@@ -323,6 +325,7 @@ Future<void> showCreateOpenMatchSheet(
                 style: Theme.of(ctx2).textTheme.titleLarge),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: bookingId,
               decoration: const InputDecoration(labelText: 'My booking'),
               items: [
@@ -339,6 +342,7 @@ Future<void> showCreateOpenMatchSheet(
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: level,
               decoration: const InputDecoration(labelText: 'Match level'),
               items: [

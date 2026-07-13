@@ -64,6 +64,7 @@ class _DayGridScreenState extends State<DayGridScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: branch.id,
                         isDense: true,
                         decoration: const InputDecoration(
