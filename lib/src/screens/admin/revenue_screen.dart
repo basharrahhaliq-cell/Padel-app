@@ -179,9 +179,11 @@ class _RevenueScreenState extends State<RevenueScreen> {
                       TextStyle(color: Colors.grey.shade600, fontSize: 13)),
               if (data.dayBookings.isNotEmpty) ...[
                 const SizedBox(height: 20),
-                Text('Record payments',
+                Text('Cash box — record payments',
                     style: Theme.of(context).textTheme.titleLarge),
-                Text('Tap a booking when the customer pays at the club.',
+                Text(
+                    'Tap a booking when the customer pays and enter the '
+                    'amount you actually received (friend rates welcome).',
                     style: TextStyle(
                         color: Colors.grey.shade600, fontSize: 13)),
                 const SizedBox(height: 8),

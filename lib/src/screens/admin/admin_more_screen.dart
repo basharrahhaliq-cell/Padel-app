@@ -19,8 +19,8 @@ class AdminMoreScreen extends StatelessWidget {
     final items = <(IconData, String, Widget Function())>[
       (Icons.attach_money, 'Pricing & happy hours', () => const _Page(
           title: 'Pricing', child: PricingScreen())),
-      (Icons.bar_chart, 'Revenue', () =>
-          const _Page(title: 'Revenue', child: RevenueScreen())),
+      (Icons.point_of_sale, 'Revenue & Cash box', () => const _Page(
+          title: 'Revenue & Cash box', child: RevenueScreen())),
       (Icons.people, 'Customers', () => const CustomersScreen()),
       (Icons.emoji_events, 'Tournaments', () =>
           const TournamentsAdminScreen()),
