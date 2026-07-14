@@ -166,16 +166,19 @@ class PackagesScreen extends StatelessWidget {
                     .showSnackBar(SnackBar(content: Text(problem)));
                 return;
               }
+              // Close the dialog BEFORE the async save: popping while the
+              // live list refreshes trips debug assertions otherwise.
+              final offer = PackageOffer(
+                id: existing?.id ?? '',
+                name: name.text.trim(),
+                price: priceV!,
+                credit: creditV!,
+                validityDays: daysV!,
+                active: existing?.active ?? true,
+              );
+              Navigator.pop(ctx);
               try {
-                await db.savePackage(PackageOffer(
-                  id: existing?.id ?? '',
-                  name: name.text.trim(),
-                  price: priceV!,
-                  credit: creditV!,
-                  validityDays: daysV!,
-                  active: existing?.active ?? true,
-                ));
-                if (ctx.mounted) Navigator.pop(ctx);
+                await db.savePackage(offer);
               } catch (e) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -265,14 +268,25 @@ class PackagesScreen extends StatelessWidget {
                                 ),
                               );
                               if (sure == true) {
-                                await db.grantPackage(u, package);
+                                // Pop first, then write — avoids debug
+                                // assertions from mid-refresh pops.
                                 if (ctx2.mounted) Navigator.pop(ctx2);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(SnackBar(
-                                          content: Text(
-                                              '${money.format(package.credit)} '
-                                              'credited to ${u.name} ✅')));
+                                try {
+                                  await db.grantPackage(u, package);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(SnackBar(
+                                            content: Text(
+                                                '${money.format(package.credit)} '
+                                                'credited to ${u.name} ✅')));
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(SnackBar(
+                                            content: Text(
+                                                'Could not grant: $e')));
+                                  }
                                 }
                               }
                             },
