@@ -8,6 +8,124 @@ import '../../models/package_offer.dart';
 import '../../services/firestore_service.dart';
 import '../../theme.dart';
 
+/// Customers' pending package requests, with one-tap Grant / Dismiss.
+class _RequestsSection extends StatelessWidget {
+  final FirestoreService db;
+  final NumberFormat money;
+
+  const _RequestsSection({required this.db, required this.money});
+
+  Future<void> _grantRequest(BuildContext context,
+      ({String id, Map<String, dynamic> data}) request) async {
+    final data = request.data;
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm payment received?'),
+        content: Text(
+            '${data['customerName']} pays ${money.format(data['price'])} '
+            'and receives ${money.format(data['credit'])} wallet credit '
+            '(${data['validityDays']} days).'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Not yet')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Payment received — grant')),
+        ],
+      ),
+    );
+    if (sure != true || !context.mounted) return;
+    try {
+      final userSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(data['uid'] as String)
+          .get();
+      final customer = AppUser.fromDoc(userSnap);
+      await db.grantPackage(
+          customer,
+          PackageOffer(
+            id: (data['packageId'] as String?) ?? '',
+            name: (data['packageName'] as String?) ?? 'Package',
+            price: (data['price'] as num?)?.toDouble() ?? 0,
+            credit: (data['credit'] as num?)?.toDouble() ?? 0,
+            validityDays: (data['validityDays'] as num?)?.toInt() ?? 30,
+            active: true,
+          ));
+      await db.setPackageRequestStatus(request.id, 'granted');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${money.format(data['credit'])} credited to '
+              '${data['customerName']} ✅')));
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Could not grant: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<({String id, Map<String, dynamic> data})>>(
+      stream: db.pendingPackageRequests(),
+      builder: (context, snap) {
+        final requests = snap.data ?? [];
+        if (requests.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            Text('Requests (${requests.length})',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            for (final r in requests)
+              Card(
+                color: AppTheme.ballLime.withValues(alpha: 0.25),
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const Icon(Icons.notifications_active,
+                      color: AppTheme.courtBlueDark),
+                  title: Text(
+                      '${r.data['customerName']} → ${r.data['packageName']}'),
+                  subtitle: Text(
+                      '${r.data['customerPhone']} · pays '
+                      '${money.format(r.data['price'])} for '
+                      '${money.format(r.data['credit'])} credit'),
+                  isThreeLine: false,
+                  trailing: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Dismiss',
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.close,
+                              color: Colors.redAccent, size: 20),
+                          onPressed: () => db.setPackageRequestStatus(
+                              r.id, 'dismissed'),
+                        ),
+                        FilledButton(
+                          onPressed: () => _grantRequest(context, r),
+                          child: const Text('Grant'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// Owner prepaid packages: define offers (pay X -> play with Y, valid N
 /// days) and grant them to customers after they pay at the club.
 class PackagesScreen extends StatelessWidget {
@@ -47,6 +165,7 @@ class PackagesScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
+              _RequestsSection(db: db, money: money),
               if (packages.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(16),

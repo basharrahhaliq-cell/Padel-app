@@ -313,6 +313,49 @@ class FirestoreService {
       _db.collection('branches').doc(branchId).update(
           {'lessonCourtId': courtId});
 
+  /// Customer's wallet top-up history (credits granted by the owner).
+  Stream<List<Map<String, dynamic>>> walletTopUps(String uid) => _db
+      .collection('walletTopUps')
+      .where('uid', isEqualTo: uid)
+      .snapshots()
+      .map((s) => s.docs.map((d) => d.data()).toList());
+
+  /// Every booking of this user regardless of status — used to build the
+  /// wallet activity list (debits + refunds of cancelled bookings).
+  Stream<List<Booking>> allMyBookings(String uid) => _db
+      .collection('bookings')
+      .where('userId', isEqualTo: uid)
+      .snapshots()
+      .map((s) => s.docs.map(Booking.fromDoc).toList());
+
+  /// Customer asks the club for a package (payment happens at the club
+  /// or by transfer later); a Cloud Function notifies the admins.
+  Future<void> requestPackage(AppUser customer, PackageOffer package) =>
+      _db.collection('packageRequests').add({
+        'uid': customer.uid,
+        'customerName': customer.name,
+        'customerPhone': customer.phone,
+        'packageId': package.id,
+        'packageName': package.name,
+        'price': package.price,
+        'credit': package.credit,
+        'validityDays': package.validityDays,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+  /// Pending package requests for the owner's screen.
+  Stream<List<({String id, Map<String, dynamic> data})>>
+      pendingPackageRequests() => _db
+          .collection('packageRequests')
+          .where('status', isEqualTo: 'pending')
+          .snapshots()
+          .map((s) =>
+              [for (final d in s.docs) (id: d.id, data: d.data())]);
+
+  Future<void> setPackageRequestStatus(String id, String status) =>
+      _db.collection('packageRequests').doc(id).update({'status': status});
+
   DocumentReference<Map<String, dynamic>> _coachDayRef(
           String coachId, String date) =>
       _db.collection('coachDays').doc('${coachId}_$date');

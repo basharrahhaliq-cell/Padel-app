@@ -1,19 +1,59 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/app_user.dart';
+import '../../models/booking.dart';
 import '../../models/package_offer.dart';
 import '../../services/firestore_service.dart';
 import '../../theme.dart';
 import '../../utils/time_utils.dart';
 
-/// Customer view of prepaid packages: current wallet + the offers shown
-/// as pricing boxes (paid at the club; the owner credits the wallet).
+/// Customer view of prepaid packages: current wallet, the offers as
+/// pricing boxes (tap to request one — the club gets notified), and the
+/// wallet activity history (top-ups, deductions, refunds).
 class PackagesListScreen extends StatelessWidget {
   final AppUser profile;
 
   const PackagesListScreen({super.key, required this.profile});
+
+  Future<void> _requestPackage(
+      BuildContext context, PackageOffer p, NumberFormat money) async {
+    final db = context.read<FirestoreService>();
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Request the ${p.name} package?'),
+        content: Text(
+            'You pay ${money.format(p.price)} at the club (or by transfer '
+            'after the club confirms) and get ${money.format(p.credit)} '
+            'of playing credit, valid ${p.validityDays} days.\n\n'
+            'The club will be notified and contact you on '
+            '${profile.phone}.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Request')),
+        ],
+      ),
+    );
+    if (sure != true || !context.mounted) return;
+    try {
+      await db.requestPackage(profile, p);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Request sent! The club will contact you '
+              'to arrange payment. 💳')));
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Could not send: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,49 +96,59 @@ class PackagesListScreen extends StatelessWidget {
               Text('Packages',
                   style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 4),
-              Text(
-                  'Pay at the club and the credit lands in your wallet '
-                  'instantly — book courts and lessons with it.',
+              Text('Tap a package to request it — the club will contact '
+                  'you to arrange payment.',
                   style: TextStyle(color: Colors.grey.shade600)),
               const SizedBox(height: 16),
               if (packages.isEmpty)
                 Text('No packages available right now.',
                     style: TextStyle(color: Colors.grey.shade600))
               else if (packages.length <= 3)
-                // Pricing-table style: boxes side by side, middle
-                // highlighted when there are exactly three tiers.
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final (i, p) in packages.indexed) ...[
-                      if (i > 0) const SizedBox(width: 10),
-                      Expanded(
-                        child: PackageBox(
-                          package: p,
-                          money: money,
-                          highlighted:
-                              packages.length == 3 ? i == 1 : i == 0,
+                // Equal-height pricing boxes; middle highlighted for 3.
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final (i, p) in packages.indexed) ...[
+                        if (i > 0) const SizedBox(width: 10),
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () =>
+                                _requestPackage(context, p, money),
+                            child: PackageBox(
+                              package: p,
+                              money: money,
+                              highlighted:
+                                  packages.length == 3 ? i == 1 : i == 0,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 )
               else
                 SizedBox(
-                  height: 210,
+                  height: 220,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: packages.length,
                     separatorBuilder: (_, _) => const SizedBox(width: 10),
                     itemBuilder: (context, i) => SizedBox(
                       width: 150,
-                      child: PackageBox(
-                          package: packages[i],
-                          money: money,
-                          highlighted: false),
+                      child: InkWell(
+                        onTap: () => _requestPackage(
+                            context, packages[i], money),
+                        child: PackageBox(
+                            package: packages[i],
+                            money: money,
+                            highlighted: false),
+                      ),
                     ),
                   ),
                 ),
+              _WalletActivity(profile: profile),
             ],
           );
         },
@@ -107,7 +157,103 @@ class PackagesListScreen extends StatelessWidget {
   }
 }
 
+/// Wallet movements: package top-ups (+), booking deductions (−),
+/// and refunds of cancelled bookings (+).
+class _WalletActivity extends StatelessWidget {
+  final AppUser profile;
+
+  const _WalletActivity({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final db = context.read<FirestoreService>();
+    final money = NumberFormat.currency(symbol: '\$');
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: db.walletTopUps(profile.uid),
+      builder: (context, topUpSnap) {
+        return StreamBuilder<List<Booking>>(
+          stream: db.allMyBookings(profile.uid),
+          builder: (context, bookingSnap) {
+            final entries = <({DateTime when, String label, double amount})>[];
+            for (final t in topUpSnap.data ?? const []) {
+              entries.add((
+                when: (t['createdAt'] as Timestamp?)?.toDate() ??
+                    DateTime.now(),
+                label: '${t['packageName']} package',
+                amount: (t['credit'] as num?)?.toDouble() ?? 0,
+              ));
+            }
+            for (final b in bookingSnap.data ?? const <Booking>[]) {
+              if (b.walletUsed <= 0) continue;
+              final when = b.createdAt ?? b.startDateTime;
+              entries.add((
+                when: when,
+                label: '${b.isLesson ? 'Lesson' : 'Booking'} — '
+                    '${b.branchName} ${b.courtName}, ${b.date} '
+                    '${formatMinutes(b.startMinutes)}',
+                amount: -b.walletUsed,
+              ));
+              if (b.status == BookingStatus.cancelled) {
+                entries.add((
+                  when: when.add(const Duration(seconds: 1)),
+                  label: 'Refund — cancelled booking (${b.date})',
+                  amount: b.walletUsed,
+                ));
+              }
+            }
+            if (entries.isEmpty) return const SizedBox.shrink();
+            entries.sort((a, b) => b.when.compareTo(a.when));
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 24),
+                Text('Wallet activity',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 8),
+                Card(
+                  child: Column(
+                    children: [
+                      for (final e in entries)
+                        ListTile(
+                          dense: true,
+                          leading: Icon(
+                            e.amount >= 0
+                                ? Icons.add_circle
+                                : Icons.remove_circle,
+                            color: e.amount >= 0
+                                ? Colors.green
+                                : Colors.redAccent,
+                            size: 20,
+                          ),
+                          title: Text(e.label,
+                              style: const TextStyle(fontSize: 13)),
+                          subtitle: Text(
+                              DateFormat.yMMMd().add_jm().format(e.when),
+                              style: const TextStyle(fontSize: 11)),
+                          trailing: Text(
+                            '${e.amount >= 0 ? '+' : '−'}${money.format(e.amount.abs())}',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: e.amount >= 0
+                                    ? Colors.green
+                                    : Colors.redAccent),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
 /// One pricing box: name, big credit value, price paid, bonus, validity.
+/// Always reserves the badge row so boxes stay the same height.
 class PackageBox extends StatelessWidget {
   final PackageOffer package;
   final NumberFormat money;
@@ -123,18 +269,24 @@ class PackageBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final bonus = package.credit - package.price;
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 14, 10, 14),
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
       decoration: BoxDecoration(
         color: AppTheme.courtBlueDark,
         borderRadius: BorderRadius.circular(16),
-        border: highlighted
-            ? Border.all(color: AppTheme.ballLime, width: 2.5)
-            : null,
+        border: Border.all(
+          color:
+              highlighted ? AppTheme.ballLime : Colors.transparent,
+          width: 2.5,
+        ),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (highlighted)
-            Container(
+          // Badge row exists in every box (invisible when not
+          // highlighted) so all boxes have identical heights.
+          Opacity(
+            opacity: highlighted ? 1 : 0,
+            child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               margin: const EdgeInsets.only(bottom: 8),
@@ -148,6 +300,7 @@ class PackageBox extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: AppTheme.courtBlueDark)),
             ),
+          ),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(package.name.toUpperCase(),
@@ -170,12 +323,13 @@ class PackageBox extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text('Pay ${money.format(package.price)}',
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 14)),
+                style:
+                    const TextStyle(color: Colors.white, fontSize: 14)),
           ),
           const SizedBox(height: 8),
-          if (bonus > 0)
-            FittedBox(
+          Opacity(
+            opacity: bonus > 0 ? 1 : 0,
+            child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -191,6 +345,7 @@ class PackageBox extends StatelessWidget {
                         fontWeight: FontWeight.bold)),
               ),
             ),
+          ),
           const SizedBox(height: 8),
           Text('${package.validityDays} days',
               style:

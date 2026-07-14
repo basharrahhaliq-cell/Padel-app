@@ -191,6 +191,21 @@ exports.onBookingCancelled = onDocumentUpdated(
       }
     });
 
+// ---------- Package requests ----------
+
+/** Tell every admin when a customer requests a prepaid package. */
+exports.onPackageRequestCreated = onDocumentCreated(
+    "packageRequests/{requestId}", async (event) => {
+      const r = event.data.data();
+      if (!r) return;
+      const admins = await db.collection("users")
+          .where("role", "==", "admin").get();
+      await notifyUsers(admins.docs.map((d) => d.id),
+          "New package request 💳",
+          `${r.customerName} wants the ${r.packageName} package ` +
+          `($${r.price}) — ${r.customerPhone}`);
+    });
+
 // ---------- Tournament notifications & XP ----------
 
 exports.onTournamentCreated = onDocumentCreated(

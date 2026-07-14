@@ -47,6 +47,17 @@ service cloud.firestore {
       allow create: if isAdmin();
     }
 
+    // Package purchase requests: customers create their own; the owner
+    // reads and resolves them.
+    match /packageRequests/{requestId} {
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
     // Branches, courts and prices: everyone signed in can read;
     // only the owner (admin role) can change them — including the one-time
     // "Initialize club data" seeding, so grant yourself admin first (SETUP.md).

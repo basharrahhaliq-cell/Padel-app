@@ -53,6 +53,54 @@ void main() {
     expect(log.docs.single.get('paid'), 300);
   });
 
+  test('saving a package with an existing id updates it', () async {
+    final db = FakeFirebaseFirestore();
+    final service = FirestoreService(db);
+    await service.savePackage(const PackageOffer(
+        id: 'p1',
+        name: 'Silver',
+        price: 100,
+        credit: 115,
+        validityDays: 30,
+        active: true));
+    // Owner edits the same package: new price and credit must stick.
+    await service.savePackage(const PackageOffer(
+        id: 'p1',
+        name: 'Silver',
+        price: 110,
+        credit: 130,
+        validityDays: 30,
+        active: true));
+    final doc = await db.collection('packages').doc('p1').get();
+    expect(doc.get('price'), 110);
+    expect(doc.get('credit'), 130);
+    final all = await db.collection('packages').get();
+    expect(all.docs.length, 1); // updated, not duplicated
+  });
+
+  test('package request is recorded for the owner', () async {
+    final db = FakeFirebaseFirestore();
+    final service = FirestoreService(db);
+    const user = AppUser(
+        uid: 'u1',
+        name: 'Test',
+        phone: '+9613123456',
+        email: 't@x.com',
+        role: 'customer');
+    const pack = PackageOffer(
+        id: 'p1',
+        name: 'Gold',
+        price: 200,
+        credit: 250,
+        validityDays: 30,
+        active: true);
+    await service.requestPackage(user, pack);
+    final pending = await service.pendingPackageRequests().first;
+    expect(pending.length, 1);
+    expect(pending.single.data['customerName'], 'Test');
+    expect(pending.single.data['packageName'], 'Gold');
+  });
+
   test('booking with wallet decrements the balance atomically', () async {
     final db = FakeFirebaseFirestore();
     await db.collection('users').doc('u1').set({
