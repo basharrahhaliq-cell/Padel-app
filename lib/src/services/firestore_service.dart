@@ -250,7 +250,10 @@ class FirestoreService {
   Stream<List<PackageOffer>> packages() =>
       _db.collection('packages').snapshots().map((s) {
         final list = s.docs.map(PackageOffer.fromDoc).toList();
-        list.sort((a, b) => a.order.compareTo(b.order));
+        // Cheapest first, priciest last: Silver -> Gold -> VIP.
+        list.sort((a, b) => a.order != b.order
+            ? a.order.compareTo(b.order)
+            : a.price.compareTo(b.price));
         return list;
       });
 
