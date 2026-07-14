@@ -64,10 +64,9 @@ void main() {
     expect(find.textContaining('Ahla Bashar'), findsOneWidget);
     expect(find.textContaining('Play more to increase your level'),
         findsOneWidget);
-    expect(find.text('Paid'), findsOneWidget);
-    expect(find.text('\$30'), findsOneWidget);
-    expect(find.text('Saved'), findsOneWidget);
-    expect(find.text('\$5'), findsOneWidget);
+    // Paid/Saved moved to the Profile; Home shows packages instead.
+    expect(find.text('Paid'), findsNothing);
+    expect(find.text('Saved'), findsNothing);
     expect(find.text('Book a Court'), findsOneWidget);
     expect(find.text('Open Matches'), findsOneWidget);
     expect(find.text('Tournaments'), findsOneWidget);

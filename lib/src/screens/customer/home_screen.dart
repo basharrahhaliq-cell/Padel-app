@@ -7,6 +7,7 @@ import '../../models/app_user.dart';
 import '../../models/banner_item.dart';
 import '../../models/booking.dart';
 import '../../models/branch.dart';
+import '../../models/package_offer.dart';
 import '../../models/tournament.dart';
 import '../../services/firestore_service.dart';
 import '../../services/tournament_service.dart';
@@ -14,6 +15,7 @@ import '../../theme.dart';
 import '../../utils/time_utils.dart';
 import '../../utils/xp.dart';
 import 'booking_flow_screen.dart';
+import 'packages_list_screen.dart';
 import 'tournaments_screen.dart' show TournamentDetailScreen;
 
 /// Customer landing page: greeting, promo banners, next game, and big
@@ -46,7 +48,7 @@ class HomeScreen extends StatelessWidget {
         BannerCarousel(profile: profile),
         _XpBar(profile: profile),
         const SizedBox(height: 12),
-        _SpendSaveChip(profile: profile),
+        _WalletChip(profile: profile),
         _NextGameCard(profile: profile),
         const SizedBox(height: 8),
         GridView.count(
@@ -88,6 +90,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+        _PackagesStrip(profile: profile),
         _TournamentsStrip(profile: profile, onShowAll: () => onGoToTab(2)),
       ],
     );
@@ -158,103 +161,131 @@ class _XpBar extends StatelessWidget {
   }
 }
 
-/// "Paid $X · Saved $Y" — totals from the customer's own bookings
-/// (savings = voucher discounts). Hidden until they have any spending.
-class _SpendSaveChip extends StatelessWidget {
+/// Wallet balance at a glance (hidden when empty/expired); tapping it
+/// opens the packages screen.
+class _WalletChip extends StatelessWidget {
   final AppUser profile;
 
-  const _SpendSaveChip({required this.profile});
+  const _WalletChip({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    final wallet = profile.usableWallet(dateKey(DateTime.now()));
+    if (wallet <= 0) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => PackagesListScreen(profile: profile))),
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.courtBlueDark,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.account_balance_wallet,
+                  color: AppTheme.ballLime),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Wallet · valid until ${profile.walletExpiry}',
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 13)),
+              ),
+              Text(money.format(wallet),
+                  style: const TextStyle(
+                      color: AppTheme.ballLime,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The club's prepaid packages, shown as pricing boxes right on Home.
+/// Live from the database — the owner edits them in Packages & Wallet.
+class _PackagesStrip extends StatelessWidget {
+  final AppUser profile;
+
+  const _PackagesStrip({required this.profile});
 
   @override
   Widget build(BuildContext context) {
     final db = context.read<FirestoreService>();
     final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
-    return StreamBuilder<List<Booking>>(
-      stream: db.myBookings(profile.uid),
+    return StreamBuilder<List<PackageOffer>>(
+      stream: db.packages(),
       builder: (context, snap) {
-        final bookings = snap.data ?? [];
-        final paid =
-            bookings.fold<double>(0, (sum, b) => sum + b.price);
-        final saved =
-            bookings.fold<double>(0, (sum, b) => sum + b.voucherDiscount);
-        final wallet = profile.usableWallet(dateKey(DateTime.now()));
-        if (paid == 0 && saved == 0 && wallet == 0) {
-          return const SizedBox.shrink();
-        }
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            children: [
-              if (wallet > 0) ...[
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.courtBlueDark,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text('Wallet',
-                            style: TextStyle(
-                                color: AppTheme.ballLime, fontSize: 12)),
-                        Text(money.format(wallet),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
+        final packages =
+            (snap.data ?? []).where((p) => p.active).toList();
+        if (packages.isEmpty) return const SizedBox.shrink();
+        void openPackages() => Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (_) => PackagesListScreen(profile: profile)));
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Packages',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                TextButton(
+                    onPressed: openPackages, child: const Text('See all')),
               ],
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.courtBlue,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text('Paid',
-                          style: TextStyle(
-                              color: Colors.white70, fontSize: 12)),
-                      Text(money.format(paid),
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.ballLime,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text('Saved',
-                          style: TextStyle(
-                              color: AppTheme.courtBlueDark,
-                              fontSize: 12)),
-                      Text(money.format(saved),
-                          style: const TextStyle(
-                              color: AppTheme.courtBlueDark,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold)),
-                    ],
+            ),
+            if (packages.length <= 3)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final (i, p) in packages.indexed) ...[
+                    if (i > 0) const SizedBox(width: 10),
+                    Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: openPackages,
+                        child: PackageBox(
+                          package: p,
+                          money: money,
+                          highlighted:
+                              packages.length == 3 ? i == 1 : i == 0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              )
+            else
+              SizedBox(
+                height: 210,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: packages.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (context, i) => SizedBox(
+                    width: 150,
+                    child: InkWell(
+                      onTap: openPackages,
+                      child: PackageBox(
+                          package: packages[i],
+                          money: money,
+                          highlighted: false),
+                    ),
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         );
       },
     );

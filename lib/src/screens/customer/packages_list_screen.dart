@@ -73,7 +73,7 @@ class PackagesListScreen extends StatelessWidget {
                     for (final (i, p) in packages.indexed) ...[
                       if (i > 0) const SizedBox(width: 10),
                       Expanded(
-                        child: _PackageBox(
+                        child: PackageBox(
                           package: p,
                           money: money,
                           highlighted:
@@ -92,7 +92,7 @@ class PackagesListScreen extends StatelessWidget {
                     separatorBuilder: (_, _) => const SizedBox(width: 10),
                     itemBuilder: (context, i) => SizedBox(
                       width: 150,
-                      child: _PackageBox(
+                      child: PackageBox(
                           package: packages[i],
                           money: money,
                           highlighted: false),
@@ -108,12 +108,12 @@ class PackagesListScreen extends StatelessWidget {
 }
 
 /// One pricing box: name, big credit value, price paid, bonus, validity.
-class _PackageBox extends StatelessWidget {
+class PackageBox extends StatelessWidget {
   final PackageOffer package;
   final NumberFormat money;
   final bool highlighted;
 
-  const _PackageBox(
+  const PackageBox(
       {required this.package,
       required this.money,
       required this.highlighted});

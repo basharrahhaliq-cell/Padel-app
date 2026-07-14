@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../main.dart';
 import '../../models/app_user.dart';
+import '../../models/booking.dart';
 import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
 import '../../theme.dart';
 import '../../utils/validators.dart';
 import '../../utils/xp.dart';
@@ -168,6 +171,8 @@ class ProfileScreen extends StatelessWidget {
         const SizedBox(height: 8),
         _XpCard(profile: profile),
         const SizedBox(height: 8),
+        _PaidSavedCard(profile: profile),
+        const SizedBox(height: 8),
         Card(
           child: Column(
             children: [
@@ -236,6 +241,70 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Lifetime totals: what the customer paid and what vouchers saved them.
+class _PaidSavedCard extends StatelessWidget {
+  final AppUser profile;
+
+  const _PaidSavedCard({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final db = context.read<FirestoreService>();
+    final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    return StreamBuilder<List<Booking>>(
+      stream: db.myBookings(profile.uid),
+      builder: (context, snap) {
+        final bookings = snap.data ?? [];
+        final paid =
+            bookings.fold<double>(0, (sum, b) => sum + b.price);
+        final saved =
+            bookings.fold<double>(0, (sum, b) => sum + b.voucherDiscount);
+        if (paid == 0 && saved == 0) return const SizedBox.shrink();
+        return Card(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text('Total paid',
+                          style: TextStyle(
+                              color: Colors.grey.shade600, fontSize: 12)),
+                      Text(money.format(paid),
+                          style: const TextStyle(
+                              color: AppTheme.courtBlue,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                Container(
+                    width: 1, height: 36, color: Colors.blueGrey.shade100),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text('Saved with vouchers',
+                          style: TextStyle(
+                              color: Colors.grey.shade600, fontSize: 12)),
+                      Text(money.format(saved),
+                          style: const TextStyle(
+                              color: Colors.green,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
