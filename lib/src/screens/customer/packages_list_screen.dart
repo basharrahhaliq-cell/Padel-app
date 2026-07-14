@@ -114,7 +114,8 @@ class PackageBox extends StatelessWidget {
   final bool highlighted;
 
   const PackageBox(
-      {required this.package,
+      {super.key,
+      required this.package,
       required this.money,
       required this.highlighted});
 
