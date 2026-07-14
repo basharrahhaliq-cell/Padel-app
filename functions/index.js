@@ -167,14 +167,26 @@ exports.awardXpHourly = onSchedule(
       }
     });
 
-/** If an awarded booking is cancelled later (by the owner), remove XP. */
+/**
+ * When a booking is cancelled: refund any prepaid-wallet amount (rules
+ * only let customers DECREASE their own wallet, so the refund must
+ * happen here), and remove XP if it was already awarded.
+ */
 exports.onBookingCancelled = onDocumentUpdated(
     "bookings/{bookingId}", async (event) => {
       const before = event.data.before.data();
       const after = event.data.after.data();
       if (!before || !after) return;
-      if (before.status === "confirmed" && after.status === "cancelled" &&
-          after.xpAwarded === true && !after.isBlock) {
+      if (before.status !== "confirmed" || after.status !== "cancelled") {
+        return;
+      }
+      if ((after.walletUsed || 0) > 0 && after.userId) {
+        await db.collection("users").doc(after.userId).update({
+          walletBalance:
+              admin.firestore.FieldValue.increment(after.walletUsed),
+        });
+      }
+      if (after.xpAwarded === true && !after.isBlock) {
         await grantXp(after.userId, -XP_BOOKING, -1);
       }
     });

@@ -12,7 +12,7 @@ import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../theme.dart';
 import '../../utils/slot_engine.dart';
-import '../../utils/time_utils.dart';
+import '../../utils/time_utils.dart' show formatMinutes, parseDateKey, dateKey;
 
 /// Final review: the customer sees the exact price before confirming.
 /// Confirming runs the database transaction and schedules the 2h reminder.
@@ -41,11 +41,22 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
   final _voucherField = TextEditingController();
   Voucher? _voucher; // validated voucher, applied to the price
   String? _voucherError;
+  bool _useWallet = false;
 
   double get _finalPrice =>
       _voucher == null ? widget.slot.price : _voucher!.apply(widget.slot.price);
 
   double get _discount => widget.slot.price - _finalPrice;
+
+  double get _walletAvailable =>
+      widget.profile.usableWallet(dateKey(DateTime.now()));
+
+  /// How much of the final price the wallet covers when enabled.
+  double get _walletUsed => !_useWallet
+      ? 0
+      : (_walletAvailable >= _finalPrice ? _finalPrice : _walletAvailable);
+
+  double get _payAtClub => _finalPrice - _walletUsed;
 
   @override
   void dispose() {
@@ -90,6 +101,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
       status: BookingStatus.confirmed,
       voucherCode: _voucher?.code,
       voucherDiscount: _discount,
+      walletUsed: _walletUsed,
     );
 
     try {
@@ -118,6 +130,15 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
         _voucherError = e.reason;
         _busy = false;
       });
+    } on WalletRejectedException {
+      if (!mounted) return;
+      setState(() {
+        _useWallet = false;
+        _busy = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Your wallet credit is no longer available — '
+              'price is payable at the club.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -226,9 +247,35 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                         ),
                       ],
                     ),
+                    if (_walletAvailable > 0) ...[
+                      const SizedBox(height: 4),
+                      CheckboxListTile(
+                        value: _useWallet,
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: Text(
+                            'Use wallet credit '
+                            '(${money.format(_walletAvailable)} available)',
+                            style: const TextStyle(fontSize: 14)),
+                        onChanged: (v) =>
+                            setState(() => _useWallet = v ?? false),
+                      ),
+                      if (_useWallet)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            'Wallet pays ${money.format(_walletUsed)}'
+                            '${_payAtClub > 0 ? ' · ${money.format(_payAtClub)} at the club' : ' — nothing to pay at the club! 🎉'}',
+                            style: const TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                    ],
                     const SizedBox(height: 8),
-                    Text(l10n.payAtClub,
-                        style: TextStyle(color: Colors.grey.shade600)),
+                    if (!_useWallet || _payAtClub > 0)
+                      Text(l10n.payAtClub,
+                          style: TextStyle(color: Colors.grey.shade600)),
                   ],
                 ),
               ),

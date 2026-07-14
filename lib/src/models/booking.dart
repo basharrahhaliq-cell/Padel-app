@@ -42,6 +42,9 @@ class Booking {
   final String? voucherCode;
   final double voucherDiscount;
 
+  /// Amount of this booking paid from the customer's prepaid wallet.
+  final double walletUsed;
+
   /// Academy lesson fields (the student is userId/userName).
   final bool isLesson;
   final String? coachId;
@@ -72,6 +75,7 @@ class Booking {
     this.xpAwarded = false,
     this.voucherCode,
     this.voucherDiscount = 0,
+    this.walletUsed = 0,
     this.isLesson = false,
     this.coachId,
     this.coachName,
@@ -110,6 +114,7 @@ class Booking {
       xpAwarded: (data['xpAwarded'] as bool?) ?? false,
       voucherCode: data['voucherCode'] as String?,
       voucherDiscount: (data['voucherDiscount'] as num?)?.toDouble() ?? 0,
+      walletUsed: (data['walletUsed'] as num?)?.toDouble() ?? 0,
       isLesson: (data['isLesson'] as bool?) ?? false,
       coachId: data['coachId'] as String?,
       coachName: data['coachName'] as String?,
@@ -141,6 +146,7 @@ class Booking {
         'xpAwarded': false,
         'voucherCode': voucherCode,
         'voucherDiscount': voucherDiscount,
+        'walletUsed': walletUsed,
         'isLesson': isLesson,
         'coachId': coachId,
         'coachName': coachName,

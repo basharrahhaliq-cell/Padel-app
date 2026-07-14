@@ -27,6 +27,11 @@ class AppUser {
   final int xp;
   final int matchesPlayed;
 
+  /// Prepaid wallet: credit granted by the owner when a package is
+  /// bought at the club. Unusable after [walletExpiry] (yyyy-MM-dd).
+  final double walletBalance;
+  final String walletExpiry;
+
   final DateTime? createdAt;
 
   const AppUser({
@@ -40,6 +45,8 @@ class AppUser {
     this.notifyOpenMatches = true,
     this.xp = 0,
     this.matchesPlayed = 0,
+    this.walletBalance = 0,
+    this.walletExpiry = '',
     this.createdAt,
   });
 
@@ -48,6 +55,13 @@ class AppUser {
   /// True once the required fields exist (Google sign-ins start without a
   /// phone/level and are routed to the complete-profile screen).
   bool get isComplete => phone.isNotEmpty && skillLevel.isNotEmpty;
+
+  /// Usable wallet credit (0 when expired).
+  double usableWallet(String todayKey) => walletBalance > 0 &&
+          walletExpiry.isNotEmpty &&
+          walletExpiry.compareTo(todayKey) >= 0
+      ? walletBalance
+      : 0;
 
   factory AppUser.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
@@ -62,6 +76,8 @@ class AppUser {
       notifyOpenMatches: (data['notifyOpenMatches'] as bool?) ?? true,
       xp: (data['xp'] as num?)?.toInt() ?? 0,
       matchesPlayed: (data['matchesPlayed'] as num?)?.toInt() ?? 0,
+      walletBalance: (data['walletBalance'] as num?)?.toDouble() ?? 0,
+      walletExpiry: (data['walletExpiry'] as String?) ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     );
   }

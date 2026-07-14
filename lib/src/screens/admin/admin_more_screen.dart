@@ -6,6 +6,7 @@ import 'pricing_screen.dart';
 import 'revenue_screen.dart';
 import 'banners_screen.dart';
 import 'coaches_screen.dart';
+import 'packages_screen.dart';
 import 'tournaments_admin_screen.dart';
 import 'vouchers_screen.dart';
 
@@ -24,6 +25,8 @@ class AdminMoreScreen extends StatelessWidget {
       (Icons.emoji_events, 'Tournaments', () =>
           const TournamentsAdminScreen()),
       (Icons.confirmation_number, 'Vouchers', () => const VouchersScreen()),
+      (Icons.account_balance_wallet, 'Packages & Wallet', () =>
+          const PackagesScreen()),
       (Icons.campaign, 'Promo banners', () => const BannersScreen()),
       (Icons.school, 'Academy — coaches', () => const CoachesScreen()),
     ];

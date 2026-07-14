@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/app_user.dart';
 import '../models/banner_item.dart';
 import '../models/booking.dart';
 import '../models/branch.dart';
@@ -7,6 +8,7 @@ import '../models/coach.dart';
 import '../models/court.dart';
 import '../models/happy_hour_rule.dart';
 import '../models/open_match.dart';
+import '../models/package_offer.dart';
 import '../models/voucher.dart';
 import '../utils/slot_engine.dart';
 import '../utils/time_utils.dart';
@@ -23,6 +25,10 @@ class VoucherRejectedException implements Exception {
 
   VoucherRejectedException(this.reason);
 }
+
+/// Thrown when the wallet can't cover the requested amount (expired or
+/// spent in the meantime).
+class WalletRejectedException implements Exception {}
 
 /// All Firestore reads/writes in one place.
 ///
@@ -126,6 +132,10 @@ class FirestoreService {
         ? null
         : _db.collection('vouchers').doc(booking.voucherCode);
 
+    final userRef = booking.walletUsed > 0
+        ? _db.collection('users').doc(booking.userId)
+        : null;
+
     await _db.runTransaction((tx) async {
       final daySnap = await tx.get(dayRef);
       Voucher? voucher;
@@ -139,11 +149,25 @@ class FirestoreService {
             voucher.rejectionReason(booking.userId, booking.branchId);
         if (reason != null) throw VoucherRejectedException(reason);
       }
+      if (userRef != null) {
+        final uSnap = await tx.get(userRef);
+        final user = AppUser.fromDoc(uSnap);
+        if (user.usableWallet(dateKey(DateTime.now())) <
+            booking.walletUsed) {
+          throw WalletRejectedException();
+        }
+      }
 
       final intervals = intervalsFromDay(daySnap.data());
       final clash = intervals
           .any((b) => b.overlaps(booking.startMinutes, booking.endMinutes));
       if (clash) throw SlotTakenException();
+
+      if (userRef != null) {
+        tx.update(userRef, {
+          'walletBalance': FieldValue.increment(-booking.walletUsed),
+        });
+      }
 
       if (voucherRef != null && voucher != null) {
         tx.update(voucherRef, {
@@ -219,6 +243,51 @@ class FirestoreService {
             SetOptions(merge: true));
       }
     });
+  }
+
+  // ---------- Prepaid packages & wallet ----------
+
+  Stream<List<PackageOffer>> packages() =>
+      _db.collection('packages').snapshots().map((s) {
+        final list = s.docs.map(PackageOffer.fromDoc).toList();
+        list.sort((a, b) => a.order.compareTo(b.order));
+        return list;
+      });
+
+  Future<void> savePackage(PackageOffer p) {
+    final col = _db.collection('packages');
+    final doc = p.id.isEmpty ? col.doc() : col.doc(p.id);
+    return doc.set(p.toMap());
+  }
+
+  Future<void> deletePackage(String id) =>
+      _db.collection('packages').doc(id).delete();
+
+  /// Owner grants a package after the customer pays at the club:
+  /// wallet balance goes up, expiry extends, and a top-up log is kept.
+  Future<void> grantPackage(AppUser customer, PackageOffer package) async {
+    final newExpiry = dateKey(
+        DateTime.now().add(Duration(days: package.validityDays)));
+    final expiry = customer.walletExpiry.compareTo(newExpiry) > 0
+        ? customer.walletExpiry
+        : newExpiry;
+    // Expired leftover credit is wiped before the new credit lands.
+    final base = customer.usableWallet(dateKey(DateTime.now()));
+    final batch = _db.batch();
+    batch.update(_db.collection('users').doc(customer.uid), {
+      'walletBalance': base + package.credit,
+      'walletExpiry': expiry,
+    });
+    batch.set(_db.collection('walletTopUps').doc(), {
+      'uid': customer.uid,
+      'customerName': customer.name,
+      'packageName': package.name,
+      'paid': package.price,
+      'credit': package.credit,
+      'expiry': expiry,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
   }
 
   // ---------- Academy (coaches & lessons) ----------

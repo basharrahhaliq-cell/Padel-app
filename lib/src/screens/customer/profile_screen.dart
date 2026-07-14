@@ -11,6 +11,7 @@ import '../auth/login_screen.dart' show levelName;
 import '../contact_us_screen.dart';
 import '../privacy_policy_screen.dart';
 import 'my_bookings_screen.dart';
+import 'packages_list_screen.dart';
 import 'vouchers_list_screen.dart';
 
 /// Customer profile: personal details, padel level, XP progress,
@@ -191,6 +192,15 @@ class ProfileScreen extends StatelessWidget {
         Card(
           child: Column(
             children: [
+              ListTile(
+                leading: const Icon(Icons.account_balance_wallet,
+                    color: AppTheme.courtBlue),
+                title: const Text('Packages & Wallet'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => PackagesListScreen(profile: profile))),
+              ),
+              const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.confirmation_number,
                     color: AppTheme.courtBlue),

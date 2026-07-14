@@ -177,11 +177,38 @@ class _SpendSaveChip extends StatelessWidget {
             bookings.fold<double>(0, (sum, b) => sum + b.price);
         final saved =
             bookings.fold<double>(0, (sum, b) => sum + b.voucherDiscount);
-        if (paid == 0 && saved == 0) return const SizedBox.shrink();
+        final wallet = profile.usableWallet(dateKey(DateTime.now()));
+        if (paid == 0 && saved == 0 && wallet == 0) {
+          return const SizedBox.shrink();
+        }
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Row(
             children: [
+              if (wallet > 0) ...[
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.courtBlueDark,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text('Wallet',
+                            style: TextStyle(
+                                color: AppTheme.ballLime, fontSize: 12)),
+                        Text(money.format(wallet),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 12),

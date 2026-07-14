@@ -21,11 +21,30 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.role == 'customer';
+      // Self-updates can't change the role and can't INCREASE the
+      // prepaid wallet (only the owner grants credit; bookings only
+      // ever decrease it; refunds run through the Cloud Function).
       allow update: if signedIn() && (
         isAdmin() ||
         (request.auth.uid == userId &&
-         request.resource.data.role == resource.data.role)
+         request.resource.data.role == resource.data.role &&
+         request.resource.data.get('walletBalance', 0)
+           <= resource.data.get('walletBalance', 0))
       );
+    }
+
+    // Prepaid packages: customers browse; owner manages.
+    match /packages/{packageId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Wallet top-up log: owner writes when granting; customers may read
+    // their own history.
+    match /walletTopUps/{topUpId} {
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isAdmin();
     }
 
     // Branches, courts and prices: everyone signed in can read;
