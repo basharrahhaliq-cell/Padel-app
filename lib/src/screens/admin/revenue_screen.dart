@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../main.dart';
 import '../../models/booking.dart';
+import '../../models/branch.dart';
 import '../../services/firestore_service.dart';
 import '../../theme.dart';
 import '../../utils/time_utils.dart';
@@ -20,6 +21,7 @@ class RevenueScreen extends StatefulWidget {
 
 class _RevenueScreenState extends State<RevenueScreen> {
   DateTime _date = DateTime.now();
+  String? _branchId; // null = all branches
   late Future<_RevenueData> _future = _load();
 
   Future<_RevenueData> _load() async {
@@ -28,7 +30,10 @@ class _RevenueScreenState extends State<RevenueScreen> {
     final sunday = monday.add(const Duration(days: 6));
     final weekBookings =
         await db.bookingsBetween(dateKey(monday), dateKey(sunday));
-    final real = weekBookings.where((b) => !b.isBlock).toList();
+    final real = weekBookings
+        .where((b) =>
+            !b.isBlock && (_branchId == null || b.branchId == _branchId))
+        .toList();
 
     final dayTotals = <String, double>{};
     final weekTotals = <String, double>{};
@@ -107,10 +112,44 @@ class _RevenueScreenState extends State<RevenueScreen> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              OutlinedButton.icon(
-                icon: const Icon(Icons.calendar_today, size: 18),
-                label: Text(DateFormat.yMMMEd().format(_date)),
-                onPressed: _pickDate,
+              Row(
+                children: [
+                  Expanded(
+                    child: StreamBuilder<List<Branch>>(
+                      stream:
+                          context.read<FirestoreService>().branches(),
+                      builder: (context, branchSnap) {
+                        final branches = branchSnap.data ?? [];
+                        return DropdownButtonFormField<String?>(
+                          isExpanded: true,
+                          initialValue: _branchId,
+                          isDense: true,
+                          decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8)),
+                          items: [
+                            const DropdownMenuItem(
+                                value: null,
+                                child: Text('All branches')),
+                            for (final b in branches)
+                              DropdownMenuItem(
+                                  value: b.id, child: Text(b.name)),
+                          ],
+                          onChanged: (v) => setState(() {
+                            _branchId = v;
+                            _future = _load();
+                          }),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.calendar_today, size: 18),
+                    label: Text(DateFormat.MMMd().format(_date)),
+                    onPressed: _pickDate,
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               _totalsCard(
