@@ -147,16 +147,44 @@ class PackagesScreen extends StatelessWidget {
               child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
-              if (name.text.trim().isEmpty) return;
-              await db.savePackage(PackageOffer(
-                id: existing?.id ?? '',
-                name: name.text.trim(),
-                price: double.tryParse(price.text) ?? 0,
-                credit: double.tryParse(credit.text) ?? 0,
-                validityDays: int.tryParse(days.text) ?? 30,
-                active: existing?.active ?? true,
-              ));
-              if (ctx.mounted) Navigator.pop(ctx);
+              final priceV = double.tryParse(price.text);
+              final creditV = double.tryParse(credit.text);
+              final daysV = int.tryParse(days.text);
+              String? problem;
+              if (name.text.trim().isEmpty) {
+                problem = 'Give the package a name.';
+              } else if (priceV == null || priceV <= 0) {
+                problem = '"Customer pays" must be a number above 0.';
+              } else if (creditV == null || creditV < priceV) {
+                problem =
+                    '"Wallet credit" must be at least what the customer pays.';
+              } else if (daysV == null || daysV <= 0) {
+                problem = '"Valid for" must be a number of days above 0.';
+              }
+              if (problem != null) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(problem)));
+                return;
+              }
+              try {
+                await db.savePackage(PackageOffer(
+                  id: existing?.id ?? '',
+                  name: name.text.trim(),
+                  price: priceV!,
+                  credit: creditV!,
+                  validityDays: daysV!,
+                  active: existing?.active ?? true,
+                ));
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(e.toString().contains('permission')
+                        ? 'The database refused this — your security rules '
+                            'are outdated. Run the rules deploy command '
+                            'from SETUP.md Part 2b.'
+                        : 'Could not save: $e')));
+              }
             },
             child: const Text('Save'),
           ),

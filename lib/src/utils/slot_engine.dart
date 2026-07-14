@@ -56,7 +56,10 @@ class SlotEngine {
           final discounted = base * (1 - rule.value / 100);
           return (price: _round2(discounted), rule: rule);
         }
-        final fixed = rule.fixedPrices[durationMinutes] ?? rule.value;
+        // Fixed price is PER HOUR: $20/h -> $30 for 90min, $40 for 120min.
+        // An explicit per-duration override in fixedPrices still wins.
+        final fixed = rule.fixedPrices[durationMinutes] ??
+            rule.value * (durationMinutes / 60);
         return (price: _round2(fixed), rule: rule);
       }
     }

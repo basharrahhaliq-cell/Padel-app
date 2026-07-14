@@ -149,15 +149,43 @@ void main() {
       expect(priced.rule, isNotNull);
     });
 
-    test('fixed price discount replaces the base price', () {
+    test('fixed price is per hour and scales with duration', () {
+      // $20/hour -> 60min $20, 90min $30, 120min $40 (the club offer).
+      for (final (duration, expected) in [(60, 20.0), (90, 30.0), (120, 40.0)]) {
+        final priced = SlotEngine.priceFor(
+          court: court(),
+          durationMinutes: duration,
+          date: monday,
+          startMinutes: 9 * 60,
+          rules: [rule(type: DiscountType.fixedPrice, value: 20)],
+        );
+        expect(priced.price, expected,
+            reason: '$duration min at \$20/h should be \$$expected');
+      }
+    });
+
+    test('explicit per-duration fixed price overrides the hourly rate', () {
+      final hourly = HappyHourRule(
+        id: 'r2',
+        label: 'Special',
+        branchId: 'airport-road',
+        courtIds: const [],
+        daysOfWeek: const [1, 2, 3, 4, 5],
+        startMinutes: 8 * 60,
+        endMinutes: 16 * 60,
+        discountType: DiscountType.fixedPrice,
+        value: 20,
+        fixedPrices: const {120: 35}, // 2h deal cheaper than 2 x $20
+        active: true,
+      );
       final priced = SlotEngine.priceFor(
         court: court(),
         durationMinutes: 120,
         date: monday,
         startMinutes: 9 * 60,
-        rules: [rule(type: DiscountType.fixedPrice, value: 40)],
+        rules: [hourly],
       );
-      expect(priced.price, 40);
+      expect(priced.price, 35);
     });
 
     test('rule does not apply on excluded weekdays', () {

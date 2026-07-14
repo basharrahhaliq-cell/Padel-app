@@ -313,13 +313,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get percentOff => 'Percent off';
 
   @override
-  String get fixedPriceLabel => 'Fixed price (USD)';
+  String get fixedPriceLabel => 'Fixed price / hour';
 
   @override
   String get percentValueLabel => 'Percent (e.g. 20)';
 
   @override
-  String get fixedValueLabel => 'Price in USD';
+  String get fixedValueLabel => 'Price per hour (USD) — 90 min costs 1.5×';
 
   @override
   String get activeLabel => 'Active';

@@ -667,7 +667,7 @@ abstract class AppLocalizations {
   /// No description provided for @fixedPriceLabel.
   ///
   /// In en, this message translates to:
-  /// **'Fixed price (USD)'**
+  /// **'Fixed price / hour'**
   String get fixedPriceLabel;
 
   /// No description provided for @percentValueLabel.
@@ -679,7 +679,7 @@ abstract class AppLocalizations {
   /// No description provided for @fixedValueLabel.
   ///
   /// In en, this message translates to:
-  /// **'Price in USD'**
+  /// **'Price per hour (USD) — 90 min costs 1.5×'**
   String get fixedValueLabel;
 
   /// No description provided for @activeLabel.
