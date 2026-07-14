@@ -46,6 +46,7 @@ class HomeScreen extends StatelessWidget {
         BannerCarousel(profile: profile),
         _XpBar(profile: profile),
         const SizedBox(height: 12),
+        _SpendSaveChip(profile: profile),
         _NextGameCard(profile: profile),
         const SizedBox(height: 8),
         GridView.count(
@@ -153,6 +154,82 @@ class _XpBar extends StatelessWidget {
               style: TextStyle(color: Colors.white, fontSize: 14)),
         ],
       ),
+    );
+  }
+}
+
+/// "Paid $X · Saved $Y" — totals from the customer's own bookings
+/// (savings = voucher discounts). Hidden until they have any spending.
+class _SpendSaveChip extends StatelessWidget {
+  final AppUser profile;
+
+  const _SpendSaveChip({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final db = context.read<FirestoreService>();
+    final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    return StreamBuilder<List<Booking>>(
+      stream: db.myBookings(profile.uid),
+      builder: (context, snap) {
+        final bookings = snap.data ?? [];
+        final paid =
+            bookings.fold<double>(0, (sum, b) => sum + b.price);
+        final saved =
+            bookings.fold<double>(0, (sum, b) => sum + b.voucherDiscount);
+        if (paid == 0 && saved == 0) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.courtBlue,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text('Paid',
+                          style: TextStyle(
+                              color: Colors.white70, fontSize: 12)),
+                      Text(money.format(paid),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.ballLime,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text('Saved',
+                          style: TextStyle(
+                              color: AppTheme.courtBlueDark,
+                              fontSize: 12)),
+                      Text(money.format(saved),
+                          style: const TextStyle(
+                              color: AppTheme.courtBlueDark,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
