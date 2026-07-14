@@ -627,6 +627,29 @@ class FirestoreService {
         .toList();
   }
 
+  /// Live version of [bookingsBetween]: updates instantly on local
+  /// writes (latency-compensated), so the cash box reacts immediately
+  /// even on slow connections.
+  Stream<List<Booking>> bookingsBetweenStream(
+          String fromDate, String toDate) =>
+      _db
+          .collection('bookings')
+          .where('date', isGreaterThanOrEqualTo: fromDate)
+          .where('date', isLessThanOrEqualTo: toDate)
+          .snapshots()
+          .map((s) => s.docs
+              .map(Booking.fromDoc)
+              .where((b) => b.status == BookingStatus.confirmed)
+              .toList());
+
+  /// Records the cash received for a booking. Intentionally not awaited
+  /// by callers: the local snapshot updates instantly and the write
+  /// syncs in the background.
+  Future<void> recordPayment(String bookingId, double amount) => _db
+      .collection('bookings')
+      .doc(bookingId)
+      .update({'paidAmount': amount, 'paymentStatus': 'paid'});
+
   // ---------- First-run seeding ----------
 
   /// Creates the two branches and their courts with starter prices if the

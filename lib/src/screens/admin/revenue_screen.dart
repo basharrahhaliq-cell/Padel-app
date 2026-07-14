@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +11,8 @@ import '../../utils/time_utils.dart';
 
 /// Expected revenue per branch, today and this week (Mon–Sun),
 /// summed from confirmed bookings' stored prices (blocks excluded).
+/// Fed by a live stream so recorded payments show instantly, even
+/// before the write reaches the server (important on slow connections).
 class RevenueScreen extends StatefulWidget {
   const RevenueScreen({super.key});
 
@@ -22,14 +23,9 @@ class RevenueScreen extends StatefulWidget {
 class _RevenueScreenState extends State<RevenueScreen> {
   DateTime _date = DateTime.now();
   String? _branchId; // null = all branches
-  late Future<_RevenueData> _future = _load();
 
-  Future<_RevenueData> _load() async {
-    final db = context.read<FirestoreService>();
-    final monday = _date.subtract(Duration(days: _date.weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
-    final weekBookings =
-        await db.bookingsBetween(dateKey(monday), dateKey(sunday));
+  _RevenueData _compute(
+      List<Booking> weekBookings, DateTime monday, DateTime sunday) {
     final real = weekBookings
         .where((b) =>
             !b.isBlock && (_branchId == null || b.branchId == _branchId))
@@ -78,122 +74,116 @@ class _RevenueScreenState extends State<RevenueScreen> {
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-    if (picked != null) {
-      setState(() {
-        _date = picked;
-        _future = _load();
-      });
-    }
+    if (picked != null) setState(() => _date = picked);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final money = NumberFormat.currency(symbol: '\$');
+    final db = context.read<FirestoreService>();
+    final monday = _date.subtract(Duration(days: _date.weekday - 1));
+    final sunday = monday.add(const Duration(days: 6));
 
-    return RefreshIndicator(
-      onRefresh: () async => setState(() => _future = _load()),
-      child: FutureBuilder<_RevenueData>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('Could not load revenue:\n${snap.error}',
-                    textAlign: TextAlign.center),
-              ),
-            );
-          }
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final data = snap.data!;
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: StreamBuilder<List<Branch>>(
-                      stream:
-                          context.read<FirestoreService>().branches(),
-                      builder: (context, branchSnap) {
-                        final branches = branchSnap.data ?? [];
-                        return DropdownButtonFormField<String?>(
-                          isExpanded: true,
-                          initialValue: _branchId,
-                          isDense: true,
-                          decoration: const InputDecoration(
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8)),
-                          items: [
-                            const DropdownMenuItem(
-                                value: null,
-                                child: Text('All branches')),
-                            for (final b in branches)
-                              DropdownMenuItem(
-                                  value: b.id, child: Text(b.name)),
-                          ],
-                          onChanged: (v) => setState(() {
-                            _branchId = v;
-                            _future = _load();
-                          }),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.calendar_today, size: 18),
-                    label: Text(DateFormat.MMMd().format(_date)),
-                    onPressed: _pickDate,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _totalsCard(
-                context,
-                title: '${l10n.todayLabel} — '
-                    '${DateFormat.MMMEd().format(_date)}',
-                totals: data.dayTotals,
-                count: data.dayCount,
-                lessons: data.dayLessons,
-                received: data.dayReceived,
-                money: money,
-              ),
-              const SizedBox(height: 12),
-              _totalsCard(
-                context,
-                title: '${l10n.thisWeekLabel} · '
-                    '${DateFormat.MMMd().format(data.monday)} – ${DateFormat.MMMd().format(data.sunday)}',
-                totals: data.weekTotals,
-                count: data.weekCount,
-                lessons: data.weekLessons,
-                received: data.weekReceived,
-                money: money,
-              ),
-              const SizedBox(height: 12),
-              Text(l10n.revenueNote,
-                  style:
-                      TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-              if (data.dayBookings.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                Text('Cash box — record payments',
-                    style: Theme.of(context).textTheme.titleLarge),
-                Text(
-                    'Tap a booking when the customer pays and enter the '
-                    'amount you actually received (friend rates welcome).',
-                    style: TextStyle(
-                        color: Colors.grey.shade600, fontSize: 13)),
-                const SizedBox(height: 8),
-                for (final b in data.dayBookings)
-                  _paymentRow(context, b, money),
-              ],
-            ],
+    return StreamBuilder<List<Booking>>(
+      // Keyed by the week so picking another date swaps the stream.
+      key: ValueKey(dateKey(monday)),
+      stream: db.bookingsBetweenStream(dateKey(monday), dateKey(sunday)),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('Could not load revenue:\n${snap.error}',
+                  textAlign: TextAlign.center),
+            ),
           );
-        },
-      ),
+        }
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final data = _compute(snap.data!, monday, sunday);
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: StreamBuilder<List<Branch>>(
+                    stream:
+                        context.read<FirestoreService>().branches(),
+                    builder: (context, branchSnap) {
+                      final branches = branchSnap.data ?? [];
+                      return DropdownButtonFormField<String?>(
+                        isExpanded: true,
+                        initialValue: _branchId,
+                        isDense: true,
+                        decoration: const InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8)),
+                        items: [
+                          const DropdownMenuItem(
+                              value: null,
+                              child: Text('All branches')),
+                          for (final b in branches)
+                            DropdownMenuItem(
+                                value: b.id, child: Text(b.name)),
+                        ],
+                        onChanged: (v) => setState(() => _branchId = v),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today, size: 18),
+                  label: Text(DateFormat.MMMd().format(_date)),
+                  onPressed: _pickDate,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _totalsCard(
+              context,
+              title: '${l10n.todayLabel} — '
+                  '${DateFormat.MMMEd().format(_date)}',
+              totals: data.dayTotals,
+              count: data.dayCount,
+              lessons: data.dayLessons,
+              received: data.dayReceived,
+              money: money,
+            ),
+            const SizedBox(height: 12),
+            _totalsCard(
+              context,
+              title: '${l10n.thisWeekLabel} · '
+                  '${DateFormat.MMMd().format(data.monday)} – ${DateFormat.MMMd().format(data.sunday)}',
+              totals: data.weekTotals,
+              count: data.weekCount,
+              lessons: data.weekLessons,
+              received: data.weekReceived,
+              money: money,
+            ),
+            const SizedBox(height: 12),
+            Text(l10n.revenueNote,
+                style:
+                    TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            if (data.dayBookings.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text('Cash box — record payments',
+                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                  'Tap a booking when the customer pays and enter the '
+                  'amount you actually received (friend rates welcome).',
+                  style: TextStyle(
+                      color: Colors.grey.shade600, fontSize: 13)),
+              const SizedBox(height: 8),
+              for (final b in data.dayBookings)
+                _paymentRow(context, b, money),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -232,6 +222,9 @@ class _RevenueScreenState extends State<RevenueScreen> {
   }
 
   /// Records (or corrects) the cash actually received for a booking.
+  /// The write is NOT awaited: the stream above repaints instantly from
+  /// the phone's local copy while Firestore syncs in the background, so
+  /// the row turns green immediately even on a slow connection.
   Future<void> _recordPayment(Booking b) async {
     final money = NumberFormat.currency(symbol: '\$');
     final expectedCash = b.price - b.walletUsed;
@@ -274,12 +267,16 @@ class _RevenueScreenState extends State<RevenueScreen> {
     if (saved != true) return;
     final amount = double.tryParse(controller.text);
     if (amount == null || amount < 0) return;
-    await FirebaseFirestore.instance
-        .collection('bookings')
-        .doc(b.id)
-        .update({'paidAmount': amount, 'paymentStatus': 'paid'});
     if (!mounted) return;
-    setState(() => _future = _load());
+    final messenger = ScaffoldMessenger.of(context);
+    // Fire and forget — see the doc comment above.
+    context
+        .read<FirestoreService>()
+        .recordPayment(b.id, amount)
+        .catchError((Object e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('Payment did not save: $e')));
+    });
   }
 
   Widget _totalsCard(BuildContext context,

@@ -117,4 +117,29 @@ void main() {
     expect(find.textContaining('Today'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Cash box shows a recorded payment immediately',
+      (tester) async {
+    final db = await seededDb();
+    await tester
+        .pumpWidget(wrap(db, const Scaffold(body: RevenueScreen())));
+    await tester.pumpAndSettle();
+
+    // The booking starts unpaid: the row invites recording.
+    expect(find.text('Tap to record'), findsOneWidget);
+
+    // Owner taps the row, changes the amount to a friend rate, saves.
+    await tester.ensureVisible(find.text('Tap to record'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tap to record'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '20');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    // No re-entering the screen: the row turns paid on its own.
+    expect(find.text('Tap to record'), findsNothing);
+    expect(find.textContaining('Received \$20.00'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
