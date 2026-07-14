@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -35,57 +34,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked != null) setState(() => _date = picked);
-  }
-
-  /// Owner adjusts what was actually charged (friend price, courtesy
-  /// discount, ...). Revenue then reflects reality.
-  Future<void> _editPrice(Booking booking) async {
-    final money = NumberFormat.currency(symbol: '\$');
-    final controller =
-        TextEditingController(text: booking.price.toStringAsFixed(2));
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Adjust price — ${booking.userName}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-                '${booking.branchName} · ${booking.courtName} · '
-                '${formatMinutes(booking.startMinutes)}\n'
-                'Current price: ${money.format(booking.price)}',
-                style: TextStyle(color: Colors.grey.shade600)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                  labelText: 'Price actually charged', prefixText: '\$ '),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save')),
-        ],
-      ),
-    );
-    if (saved != true) return;
-    final newPrice = double.tryParse(controller.text);
-    if (newPrice == null || newPrice < 0) return;
-    await FirebaseFirestore.instance
-        .collection('bookings')
-        .doc(booking.id)
-        .update({'price': newPrice});
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Price updated to ${money.format(newPrice)}')));
   }
 
   Future<void> _cancelAsAdmin(Booking booking) async {
@@ -179,7 +127,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           '${matchByBooking.containsKey(b.id) ? '\nPlayers: ${matchByBooking[b.id]!.allPlayerNames.join(', ')}' : ''}',
                         ),
                         isThreeLine: true,
-                        onTap: b.isBlock ? null : () => _editPrice(b),
                         // FittedBox scales this corner down to whatever
                         // space the tile has — immune to device font size.
                         trailing: FittedBox(

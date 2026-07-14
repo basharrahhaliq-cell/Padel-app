@@ -45,6 +45,9 @@ class Booking {
   /// Amount of this booking paid from the customer's prepaid wallet.
   final double walletUsed;
 
+  /// Cash the owner recorded receiving at the club (null = not yet paid).
+  final double? paidAmount;
+
   /// Academy lesson fields (the student is userId/userName).
   final bool isLesson;
   final String? coachId;
@@ -76,6 +79,7 @@ class Booking {
     this.voucherCode,
     this.voucherDiscount = 0,
     this.walletUsed = 0,
+    this.paidAmount,
     this.isLesson = false,
     this.coachId,
     this.coachName,
@@ -115,6 +119,7 @@ class Booking {
       voucherCode: data['voucherCode'] as String?,
       voucherDiscount: (data['voucherDiscount'] as num?)?.toDouble() ?? 0,
       walletUsed: (data['walletUsed'] as num?)?.toDouble() ?? 0,
+      paidAmount: (data['paidAmount'] as num?)?.toDouble(),
       isLesson: (data['isLesson'] as bool?) ?? false,
       coachId: data['coachId'] as String?,
       coachName: data['coachName'] as String?,
@@ -147,6 +152,7 @@ class Booking {
         'voucherCode': voucherCode,
         'voucherDiscount': voucherDiscount,
         'walletUsed': walletUsed,
+        'paidAmount': paidAmount,
         'isLesson': isLesson,
         'coachId': coachId,
         'coachName': coachName,
