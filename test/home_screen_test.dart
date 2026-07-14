@@ -6,6 +6,7 @@ import 'package:padel_app/l10n/app_localizations.dart';
 import 'package:padel_app/src/models/app_user.dart';
 import 'package:padel_app/src/screens/customer/home_screen.dart';
 import 'package:padel_app/src/services/firestore_service.dart';
+import 'package:padel_app/src/services/tournament_service.dart';
 import 'package:padel_app/src/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -40,6 +41,7 @@ void main() {
     await tester.pumpWidget(MultiProvider(
       providers: [
         Provider<FirestoreService>(create: (_) => FirestoreService(db)),
+        Provider<TournamentService>(create: (_) => TournamentService(db)),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
@@ -59,6 +61,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Ahla Bashar'), findsOneWidget);
+    expect(find.textContaining('Play more to increase your level'),
+        findsOneWidget);
     expect(find.text('Book a Court'), findsOneWidget);
     expect(find.text('Open Matches'), findsOneWidget);
     expect(find.text('Tournaments'), findsOneWidget);

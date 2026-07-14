@@ -7,9 +7,12 @@ import '../../models/app_user.dart';
 import '../../models/banner_item.dart';
 import '../../models/booking.dart';
 import '../../models/branch.dart';
+import '../../models/tournament.dart';
 import '../../services/firestore_service.dart';
+import '../../services/tournament_service.dart';
 import '../../theme.dart';
 import '../../utils/time_utils.dart';
+import '../../utils/xp.dart';
 import 'booking_flow_screen.dart';
 import 'tournaments_screen.dart' show TournamentDetailScreen;
 
@@ -41,6 +44,8 @@ class HomeScreen extends StatelessWidget {
             style: TextStyle(color: Colors.grey.shade600)),
         const SizedBox(height: 16),
         BannerCarousel(profile: profile),
+        _XpBar(profile: profile),
+        const SizedBox(height: 12),
         _NextGameCard(profile: profile),
         const SizedBox(height: 8),
         GridView.count(
@@ -82,7 +87,72 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+        _TournamentsStrip(profile: profile, onShowAll: () => onGoToTab(2)),
       ],
+    );
+  }
+}
+
+/// XP level bar, Padel-IQ style: level star → progress → next level.
+class _XpBar extends StatelessWidget {
+  final AppUser profile;
+
+  const _XpBar({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final level = XpSystem.levelFor(profile.xp);
+    final progress = XpSystem.progress(profile.xp);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      decoration: BoxDecoration(
+        color: AppTheme.courtBlueDark,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: AppTheme.ballLime,
+                child: Text('$level',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.courtBlueDark)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    backgroundColor: Colors.white24,
+                    color: AppTheme.ballLime,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.ballLime, width: 2),
+                ),
+                child: Text('${level + 1}',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text('Play more to increase your level',
+              style: TextStyle(color: Colors.white, fontSize: 14)),
+        ],
+      ),
     );
   }
 }
@@ -106,7 +176,35 @@ class _NextGameCard extends StatelessWidget {
                 .add(Duration(minutes: b.durationMinutes))
                 .isAfter(now))
             .firstOrNull;
-        if (next == null) return const SizedBox.shrink();
+        // Padel-IQ style empty state: turn "no game" into a call to action.
+        if (next == null) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text("You don't have a match yet — book it now!",
+                      style: TextStyle(
+                          fontSize: 15, color: Colors.grey.shade700)),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.ballLime,
+                      foregroundColor: AppTheme.courtBlueDark,
+                      minimumSize: const Size.fromHeight(52),
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Book Match'),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                BranchPickerScreen(profile: profile))),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         return Card(
           color: AppTheme.courtBlueDark,
           child: ListTile(
@@ -132,6 +230,101 @@ class _NextGameCard extends StatelessWidget {
             ),
             isThreeLine: true,
           ),
+        );
+      },
+    );
+  }
+}
+
+/// Horizontal scroller of upcoming tournaments, Padel-IQ style.
+class _TournamentsStrip extends StatelessWidget {
+  final AppUser profile;
+  final VoidCallback onShowAll;
+
+  const _TournamentsStrip({required this.profile, required this.onShowAll});
+
+  @override
+  Widget build(BuildContext context) {
+    final service = context.read<TournamentService>();
+    return StreamBuilder<List<Tournament>>(
+      stream: service.tournaments(),
+      builder: (context, snap) {
+        final upcoming =
+            (snap.data ?? []).where((t) => !t.isPast).toList();
+        if (upcoming.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Tournaments',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                TextButton(
+                    onPressed: onShowAll, child: const Text('Show all')),
+              ],
+            ),
+            SizedBox(
+              height: 120,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (final t in upcoming)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => TournamentDetailScreen(
+                                    tournamentId: t.id,
+                                    profile: profile))),
+                        child: Container(
+                          width: 230,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.courtBlueDark,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.emoji_events,
+                                      color: AppTheme.ballLime, size: 18),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(t.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${t.branchName} · Level ${t.level}\n'
+                                '${t.dates.isEmpty ? '' : DateFormat.MMMEd().format(parseDateKey(t.dates.first))} · '
+                                '${t.format == TournamentFormat.knockout ? 'Knockout' : 'Americano'}',
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );
@@ -232,54 +425,65 @@ class BannerCarousel extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         clipBehavior: Clip.antiAlias,
-                        child: Row(
+                        child: Stack(
+                          fit: StackFit.expand,
                           children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                  children: [
-                                    Text(b.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 6),
-                                    Text(b.text,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 13)),
-                                    if (b.tournamentId.isNotEmpty)
-                                      const Padding(
-                                        padding: EdgeInsets.only(top: 6),
-                                        child: Text('Tap to view →',
-                                            style: TextStyle(
-                                                color: AppTheme.ballLime,
-                                                fontSize: 12,
-                                                fontWeight:
-                                                    FontWeight.w600)),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                            // Full-bleed photo background when provided.
                             if (b.imageUrl.isNotEmpty)
                               Image.network(
                                 b.imageUrl,
-                                width: 110,
-                                height: 130,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, _, _) =>
                                     const SizedBox.shrink(),
                               ),
+                            if (b.imageUrl.isNotEmpty)
+                              const DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                    colors: [
+                                      Colors.black87,
+                                      Colors.transparent
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.center,
+                                children: [
+                                  Text(b.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 6),
+                                  Text(b.text,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 13)),
+                                  if (b.tournamentId.isNotEmpty)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 6),
+                                      child: Text('Tap to view →',
+                                          style: TextStyle(
+                                              color: AppTheme.ballLime,
+                                              fontSize: 12,
+                                              fontWeight:
+                                                  FontWeight.w600)),
+                                    ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
