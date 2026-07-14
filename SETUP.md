@@ -168,6 +168,10 @@ General → VPN & Device Management.)
 - **Customers list + CSV export**: More → Customers (sortable by most
   active; the CSV button opens the share sheet).
 - **Vouchers**: More → Vouchers — create codes, toggle them, see usage.
+- **Prepaid packages (wallet)**: More → Packages & Wallet — define offers
+  like "pay $300 → play with $400, 30 days". When a customer pays at the
+  club, tap **Grant**, pick their name, and the credit lands in their app
+  wallet; they spend it at checkout with the "use wallet credit" toggle.
 - **Promo banners**: More → Promo banners — cards shown on customers' home.
 - **Tournaments**: More → Tournaments — create/publish (sends the push),
   manage entries and the waitlist, block courts, generate Americano rounds
