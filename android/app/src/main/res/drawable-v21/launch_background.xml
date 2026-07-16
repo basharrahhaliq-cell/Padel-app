@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Splash (pre-Android-12): white-text Let's Padel logo on club navy -->
+<!-- Splash (pre-Android-12): Let's Padel logo centered on white -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <shape android:shape="rectangle">
-            <solid android:color="#173F63" />
-        </shape>
-    </item>
+    <item android:drawable="@android:color/white" />
     <item>
         <bitmap
             android:gravity="center"
