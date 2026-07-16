@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
+import '../../theme.dart';
 import '../admin/admin_home.dart';
-import '../contact_us_screen.dart';
 import '../customer/customer_home.dart';
 import 'complete_profile_screen.dart';
 import 'login_screen.dart';
@@ -62,18 +62,24 @@ class _Splash extends StatelessWidget {
   const _Splash();
 
   @override
-  Widget build(BuildContext context) => const Scaffold(
-        backgroundColor: Colors.white,
-        // The one and only logo screen: the Android 12+ system splash
-        // before it is kept plain white (see values-v31/styles.xml),
-        // so launching goes white -> this, with no small-logo stage.
+  Widget build(BuildContext context) => Scaffold(
+        // Club navy, matching the Android 12+ system splash before it:
+        // launching reads as one branded intro (mark -> full logo).
+        backgroundColor: AppTheme.courtBlueDark,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              BrandLogo(height: 160),
-              SizedBox(height: 32),
-              CircularProgressIndicator(),
+              Image.asset(
+                'assets/images/lets_padel_logo_white.png',
+                height: 160,
+                errorBuilder: (_, _, _) => const Icon(
+                    Icons.sports_tennis,
+                    size: 64,
+                    color: Colors.white),
+              ),
+              const SizedBox(height: 32),
+              const CircularProgressIndicator(color: AppTheme.ballLime),
             ],
           ),
         ),

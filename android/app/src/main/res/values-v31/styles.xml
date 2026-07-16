@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+ forces a system splash and only allows a SMALL
-         center icon there — a full-size logo image is not possible on
-         that first frame. So we keep it plain white (transparent
-         icon); the app's own splash right after shows the big
-         "Let's PADEL" logo — the only logo screen the user sees. -->
+    <!-- Android 12+ forces a system splash with a small center icon.
+         We lean into it: navy club background + the racket-and-ball
+         mark, flowing into the app's navy splash with the full
+         white-text logo — reads as one branded intro. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowSplashScreenBackground">#FFFFFF</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_blank</item>
+        <item name="android:windowSplashScreenBackground">#173F63</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
         <item name="android:windowBackground">@drawable/launch_background</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
