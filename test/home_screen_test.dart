@@ -62,8 +62,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Ahla Bashar'), findsOneWidget);
-    expect(find.textContaining('Play more to increase your level'),
-        findsOneWidget);
+    // XP bar shows live numbers (profile has 0 XP -> level 2 at 200).
+    expect(find.textContaining('0 XP'), findsWidgets);
+    expect(find.textContaining('200 XP to level 2'), findsOneWidget);
     // Paid/Saved moved to the Profile; Home shows packages instead.
     expect(find.text('Paid'), findsNothing);
     expect(find.text('Saved'), findsNothing);

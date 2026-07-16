@@ -34,8 +34,11 @@ class ProfileScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Edit profile'),
+        // Scrollable: when the keyboard opens the dialog gets
+        // squeezed, and a fixed column would overflow.
         content: StatefulBuilder(
-          builder: (ctx2, setState) => Column(
+          builder: (ctx2, setState) => SingleChildScrollView(
+              child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
@@ -49,6 +52,7 @@ class ProfileScreen extends StatelessWidget {
                       const InputDecoration(labelText: 'Phone number')),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: level,
                 decoration:
                     const InputDecoration(labelText: 'Your padel level'),
@@ -56,12 +60,13 @@ class ProfileScreen extends StatelessWidget {
                   for (final lvl in kSkillLevels)
                     DropdownMenuItem(
                         value: lvl,
-                        child: Text(levelName(ctx2.l10n, lvl))),
+                        child: Text(levelName(ctx2.l10n, lvl),
+                            overflow: TextOverflow.ellipsis)),
                 ],
                 onChanged: (v) => setState(() => level = v!),
               ),
             ],
-          ),
+          )),
         ),
         actions: [
           TextButton(
@@ -124,16 +129,27 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.sports_tennis, color: AppTheme.courtBlue),
-                const SizedBox(width: 12),
-                Text('Padel level: ',
-                    style: TextStyle(color: Colors.grey.shade700)),
-                Chip(
-                  backgroundColor: AppTheme.courtBlue,
-                  label: Text(
+                const Icon(Icons.sports_tennis,
+                    color: AppTheme.courtBlue, size: 20),
+                const SizedBox(width: 10),
+                Text('Padel level',
+                    style: TextStyle(
+                        color: Colors.grey.shade700, fontSize: 13)),
+                const SizedBox(width: 8),
+                // Small round badge instead of a bulky Chip.
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.courtBlue,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
                     profile.skillLevel.isEmpty ? '—' : profile.skillLevel,
                     style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -144,7 +160,10 @@ class ProfileScreen extends StatelessWidget {
                         : levelName(context.l10n, profile.skillLevel)
                             .split('— ')
                             .last,
-                    style: TextStyle(color: Colors.grey.shade600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: Colors.grey.shade600, fontSize: 12),
                   ),
                 ),
               ],

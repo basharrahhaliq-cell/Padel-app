@@ -153,8 +153,21 @@ class _XpBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const Text('Play more to increase your level',
-              style: TextStyle(color: Colors.white, fontSize: 14)),
+          // Live numbers so every played match visibly counts.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('${profile.xp} XP · ${profile.matchesPlayed} matches',
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 13)),
+              Text(
+                  '${XpSystem.xpToNext(profile.xp)} XP to level ${level + 1}',
+                  style: const TextStyle(
+                      color: AppTheme.ballLime,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600)),
+            ],
+          ),
         ],
       ),
     );

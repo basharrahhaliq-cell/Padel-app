@@ -21,23 +21,40 @@ class CustomerHome extends StatefulWidget {
   State<CustomerHome> createState() => _CustomerHomeState();
 }
 
-class _CustomerHomeState extends State<CustomerHome> {
+class _CustomerHomeState extends State<CustomerHome>
+    with WidgetsBindingObserver {
   int _tab = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Register this device for open-match / tournament pushes, and
     // settle any XP earned since the last visit so the level bar moves.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<NotificationService>().registerForPush(widget.profile);
-      context
-          .read<FirestoreService>()
-          .awardPendingXp(widget.profile.uid)
-          .catchError((_) {}); // best effort — the hourly function catches up
+      _settleXp();
     });
   }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Also settle when the user comes back to the app without
+  /// restarting it (e.g. right after playing their game).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _settleXp();
+  }
+
+  void _settleXp() => context
+      .read<FirestoreService>()
+      .awardPendingXp(widget.profile.uid)
+      .catchError((_) {}); // best effort — the hourly function catches up
 
   @override
   Widget build(BuildContext context) {
