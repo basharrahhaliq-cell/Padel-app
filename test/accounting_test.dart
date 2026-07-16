@@ -59,6 +59,8 @@ void main() {
     // Income 25 + 300 = 325; expenses 40; profit 285.
     expect(find.text('\$325.00'), findsOneWidget);
     expect(find.text('\$285.00'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Padel balls'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Padel balls'), findsOneWidget);
     expect(find.textContaining('− \$40.00'), findsOneWidget);
     expect(tester.takeException(), isNull);

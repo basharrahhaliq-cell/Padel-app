@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../models/booking.dart';
 import '../../models/branch.dart';
@@ -201,6 +205,13 @@ class _AccountingScreenState extends State<AccountingScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.table_view),
+                    label: const Text('Export this report (Excel/CSV)'),
+                    onPressed: () =>
+                        _exportCsv(bookings, topUps, expenses),
+                  ),
                   const SizedBox(height: 8),
                   Text(
                       'Money in counts cash you recorded in the cash box '
@@ -267,6 +278,84 @@ class _AccountingScreenState extends State<AccountingScreen> {
         ],
       ),
     );
+  }
+
+  /// The whole report as CSV: every money-in and money-out line in
+  /// date order, then TOTAL IN / TOTAL OUT / PROFIT rows.
+  Future<void> _exportCsv(
+      List<Booking> bookings,
+      List<Map<String, dynamic>> topUps,
+      List<Expense> expenses) async {
+    String esc(String v) =>
+        v.contains(RegExp(r'[",\n]')) ? '"${v.replaceAll('"', '""')}"' : v;
+    final rows = <(String date, List<String> cells)>[];
+    double totalIn = 0, totalOut = 0;
+    for (final b in bookings.where((b) => b.paidAmount != null)) {
+      totalIn += b.paidAmount!;
+      rows.add((
+        b.date,
+        [
+          'income',
+          b.date,
+          '${b.isLesson ? 'Lesson' : 'Booking'} cash — ${b.userName} '
+              '(${b.courtName} ${formatMinutes(b.startMinutes)})',
+          b.branchName,
+          b.paidAmount!.toStringAsFixed(2),
+          '',
+        ]
+      ));
+    }
+    for (final t in topUps) {
+      final paid = ((t['paid'] as num?) ?? 0).toDouble();
+      totalIn += paid;
+      rows.add((
+        _topUpDate(t),
+        [
+          'income',
+          _topUpDate(t),
+          'Package ${t['packageName'] ?? ''} — ${t['customerName'] ?? ''}',
+          '',
+          paid.toStringAsFixed(2),
+          '',
+        ]
+      ));
+    }
+    for (final e in expenses) {
+      totalOut += e.amount;
+      rows.add((
+        e.date,
+        [
+          'expense',
+          e.date,
+          e.description,
+          e.branchName.isEmpty ? 'Whole club' : e.branchName,
+          '',
+          e.amount.toStringAsFixed(2),
+        ]
+      ));
+    }
+    rows.sort((a, b) => a.$1.compareTo(b.$1));
+
+    final buf =
+        StringBuffer('Type,Date,Description,Branch,In USD,Out USD\n');
+    for (final (_, cells) in rows) {
+      buf.writeln(cells.map(esc).join(','));
+    }
+    buf.writeln('TOTAL IN,,,,${totalIn.toStringAsFixed(2)},');
+    buf.writeln('TOTAL OUT,,,,,${totalOut.toStringAsFixed(2)}');
+    buf.writeln(
+        'PROFIT,,,,${(totalIn - totalOut).toStringAsFixed(2)},');
+
+    final period = '${dateKey(_range.start)}_${dateKey(_range.end)}';
+    final branch = _branchId ?? 'whole-club';
+    final dir = await getTemporaryDirectory();
+    final file =
+        File('${dir.path}/lets-padel-accounting-$period-$branch.csv');
+    await file.writeAsString(buf.toString());
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile(file.path, mimeType: 'text/csv')],
+      subject: 'Let\'s Padel accounting $period ($branch)',
+    ));
   }
 
   Future<void> _addExpense(BuildContext context) async {
