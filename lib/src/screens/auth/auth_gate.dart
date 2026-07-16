@@ -64,15 +64,9 @@ class _Splash extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Scaffold(
         backgroundColor: Colors.white,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              BrandLogo(height: 160),
-              SizedBox(height: 32),
-              CircularProgressIndicator(),
-            ],
-          ),
-        ),
+        // Mirrors the Android 12+ system splash exactly (same logo,
+        // same size, centered, no spinner) so launching feels like ONE
+        // still screen instead of two.
+        body: Center(child: BrandLogo(height: 90)),
       );
 }

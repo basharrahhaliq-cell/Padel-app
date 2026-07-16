@@ -372,7 +372,10 @@ class _AccountingScreenState extends State<AccountingScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx2, setState) => AlertDialog(
           title: const Text('Add expense'),
-          content: Column(
+          // Scrollable: when the keyboard opens the dialog gets
+          // squeezed, and a fixed column would overflow.
+          content: SingleChildScrollView(
+              child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
@@ -380,7 +383,7 @@ class _AccountingScreenState extends State<AccountingScreen> {
                 autofocus: true,
                 decoration: const InputDecoration(
                     labelText: 'What was it for?',
-                    hintText: 'e.g. balls, water, electricity'),
+                    hintText: 'balls, water…'),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -413,22 +416,29 @@ class _AccountingScreenState extends State<AccountingScreen> {
                 }),
               ),
               const SizedBox(height: 12),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.calendar_today, size: 16),
-                label: Text(DateFormat.yMMMd().format(date)),
-                onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: ctx2,
-                    initialDate: date,
-                    firstDate: DateTime.now()
-                        .subtract(const Duration(days: 365)),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) setState(() => date = picked);
-                },
+              // Full-width with a shrinking label so a long date at a
+              // large font size can never overflow the dialog.
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today, size: 16),
+                  label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(DateFormat.yMMMd().format(date))),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: ctx2,
+                      initialDate: date,
+                      firstDate: DateTime.now()
+                          .subtract(const Duration(days: 365)),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) setState(() => date = picked);
+                  },
+                ),
               ),
             ],
-          ),
+          )),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx2, false),

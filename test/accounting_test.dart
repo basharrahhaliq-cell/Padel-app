@@ -52,7 +52,13 @@ void main() {
     await tester.pumpWidget(Provider(
       create: (_) => FirestoreService(db),
       child: MaterialApp(
-          theme: AppTheme.light(), home: const AccountingScreen()),
+          theme: AppTheme.light(),
+          // Large font scale like real phones — catches overflows.
+          builder: (context, w) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: const TextScaler.linear(1.3)),
+              child: w!),
+          home: const AccountingScreen()),
     ));
     await tester.pumpAndSettle();
 
@@ -63,6 +69,15 @@ void main() {
         scrollable: find.byType(Scrollable).first);
     expect(find.text('Padel balls'), findsOneWidget);
     expect(find.textContaining('− \$40.00'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // The Add-expense dialog must fit at this font scale too.
+    await tester.tap(find.text('Add expense'));
+    await tester.pumpAndSettle();
+    expect(find.text('What was it for?'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 }
