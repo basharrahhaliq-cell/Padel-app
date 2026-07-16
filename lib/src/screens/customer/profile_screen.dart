@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../main.dart';
 import '../../models/app_user.dart';
 import '../../models/booking.dart';
+import '../../services/app_lock_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../theme.dart';
@@ -209,6 +210,8 @@ class ProfileScreen extends StatelessWidget {
                 onChanged: (v) => auth
                     .updateProfile(profile.uid, {'marketingConsent': v}),
               ),
+              const Divider(height: 1),
+              const _AppLockTile(),
             ],
           ),
         ),
@@ -393,4 +396,53 @@ class _XpCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Optional fingerprint/face lock toggle. The setting is per-device
+/// (kept on the phone, not in the account) — turning it on asks for a
+/// successful scan first so nobody locks themselves out.
+class _AppLockTile extends StatefulWidget {
+  const _AppLockTile();
+
+  @override
+  State<_AppLockTile> createState() => _AppLockTileState();
+}
+
+class _AppLockTileState extends State<_AppLockTile> {
+  bool _enabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<AppLockService>().isEnabled().then((v) {
+      if (mounted) setState(() => _enabled = v);
+    });
+  }
+
+  Future<void> _toggle(bool value) async {
+    final lock = context.read<AppLockService>();
+    final messenger = ScaffoldMessenger.of(context);
+    if (value) {
+      if (!await lock.isSupported()) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('This phone has no fingerprint/face lock '
+                'set up in its settings.')));
+        return;
+      }
+      // Prove the scan works before locking the app behind it.
+      if (!await lock.authenticate()) return;
+    }
+    await lock.setEnabled(value);
+    if (mounted) setState(() => _enabled = value);
+  }
+
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+        secondary: const Icon(Icons.fingerprint),
+        title: const Text('Require fingerprint to open the app'),
+        subtitle: const Text('Applies to this phone only',
+            style: TextStyle(fontSize: 12)),
+        value: _enabled,
+        onChanged: _toggle,
+      );
 }

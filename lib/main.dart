@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
+import 'src/screens/app_lock_gate.dart';
 import 'src/screens/auth/auth_gate.dart';
 import 'src/screens/setup_required_screen.dart';
+import 'src/services/app_lock_service.dart';
 import 'src/services/auth_service.dart';
 import 'src/services/firestore_service.dart';
 import 'src/services/notification_service.dart';
@@ -46,7 +48,9 @@ class PadelApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [Locale('en')], // add Locale('ar') later
-      home: firebaseReady ? const AuthGate() : const SetupRequiredScreen(),
+      home: firebaseReady
+          ? const AppLockGate(child: AuthGate())
+          : const SetupRequiredScreen(),
     );
 
     if (!firebaseReady) return app;
@@ -57,6 +61,7 @@ class PadelApp extends StatelessWidget {
         Provider(create: (_) => FirestoreService()),
         Provider(create: (_) => NotificationService()),
         Provider(create: (_) => TournamentService()),
+        Provider(create: (_) => AppLockService()),
       ],
       child: app,
     );
