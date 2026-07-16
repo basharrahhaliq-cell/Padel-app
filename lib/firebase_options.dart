@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -57,6 +54,15 @@ class DefaultFirebaseOptions {
     appId: '1:941590347459:android:900334d20da2a5aaadec76',
     messagingSenderId: '941590347459',
     projectId: 'lets-padel-club-lb',
+    storageBucket: 'lets-padel-club-lb.firebasestorage.app',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAbZSEh1Qfn8qxr2le5c8aLmyo1lk75HT0',
+    appId: '1:941590347459:web:4fcd8c1083b50f99adec76',
+    messagingSenderId: '941590347459',
+    projectId: 'lets-padel-club-lb',
+    authDomain: 'lets-padel-club-lb.firebaseapp.com',
     storageBucket: 'lets-padel-club-lb.firebasestorage.app',
   );
 }

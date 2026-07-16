@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -437,12 +438,15 @@ class _AppLockTileState extends State<_AppLockTile> {
   }
 
   @override
-  Widget build(BuildContext context) => SwitchListTile(
-        secondary: const Icon(Icons.fingerprint),
-        title: const Text('Require fingerprint to open the app'),
-        subtitle: const Text('Applies to this phone only',
-            style: TextStyle(fontSize: 12)),
-        value: _enabled,
-        onChanged: _toggle,
-      );
+  Widget build(BuildContext context) {
+    if (kIsWeb) return const SizedBox.shrink(); // no biometrics in browsers
+    return SwitchListTile(
+      secondary: const Icon(Icons.fingerprint),
+      title: const Text('Require fingerprint to open the app'),
+      subtitle: const Text('Applies to this phone only',
+          style: TextStyle(fontSize: 12)),
+      value: _enabled,
+      onChanged: _toggle,
+    );
+  }
 }

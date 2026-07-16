@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
@@ -18,6 +19,9 @@ class NotificationService {
   bool _ready = false;
 
   Future<void> init() async {
+    // Browsers have no local notifications / FCM without a service
+    // worker — the web app simply skips reminders and pushes.
+    if (kIsWeb) return;
     if (_ready) return;
     tzdata.initializeTimeZones();
     try {
@@ -52,6 +56,7 @@ class NotificationService {
   /// topic subscriptions in sync with the user's level and settings.
   /// Safe to call on every app start / profile change.
   Future<void> registerForPush(AppUser profile) async {
+    if (kIsWeb) return;
     await init();
     try {
       final messaging = FirebaseMessaging.instance;
@@ -112,6 +117,7 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
+    if (kIsWeb) return;
     await init();
     final remindAt =
         booking.startDateTime.subtract(const Duration(hours: 2));
@@ -136,8 +142,10 @@ class NotificationService {
     );
   }
 
-  Future<void> cancelGameReminder(String bookingId) =>
-      _plugin.cancel(id: bookingId.hashCode);
+  Future<void> cancelGameReminder(String bookingId) async {
+    if (kIsWeb) return;
+    await _plugin.cancel(id: bookingId.hashCode);
+  }
 }
 
 /// Convenience for reminder body text.

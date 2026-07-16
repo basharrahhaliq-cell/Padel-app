@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,14 +11,18 @@ class AppLockService {
   static const _prefKey = 'appLockEnabled';
   final LocalAuthentication _auth = LocalAuthentication();
 
-  Future<bool> isEnabled() async =>
-      (await SharedPreferences.getInstance()).getBool(_prefKey) ?? false;
+  Future<bool> isEnabled() async {
+    if (kIsWeb) return false; // browsers have no fingerprint lock
+    return (await SharedPreferences.getInstance()).getBool(_prefKey) ??
+        false;
+  }
 
   Future<void> setEnabled(bool value) async =>
       (await SharedPreferences.getInstance()).setBool(_prefKey, value);
 
   /// Whether this phone can do biometric (or device credential) checks.
   Future<bool> isSupported() async {
+    if (kIsWeb) return false;
     try {
       return await _auth.isDeviceSupported();
     } catch (_) {

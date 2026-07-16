@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/app_user.dart';
@@ -52,6 +53,14 @@ class AuthService {
       '941590347459-mtaud4e1kj95vgprhl2jc5m5jphr3bvd.apps.googleusercontent.com';
 
   Future<void> signInWithGoogle() async {
+    if (kIsWeb) {
+      // Browsers use Firebase's own Google popup.
+      final cred = await _auth.signInWithPopup(GoogleAuthProvider());
+      final user = cred.user!;
+      await _ensureProfile(user,
+          name: user.displayName ?? '', email: user.email ?? '');
+      return;
+    }
     final google = GoogleSignIn.instance;
     await google.initialize(serverClientId: _webClientId);
     final account = await google.authenticate();

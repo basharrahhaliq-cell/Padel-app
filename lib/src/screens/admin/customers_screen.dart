@@ -1,16 +1,13 @@
-import 'dart:io';
-
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../models/app_user.dart';
 import '../../models/booking.dart';
 import '../../theme.dart';
+import '../../utils/csv_export.dart';
 
 /// Owner view of all registered customers with booking stats,
 /// sortable by activity, exportable as CSV.
@@ -146,14 +143,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
         r.preferredBranch,
       ].map(_csvEscape).join(','));
     }
-    final dir = await getTemporaryDirectory();
     final stamp = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final file = File('${dir.path}/lets-padel-customers-$stamp.csv');
-    await file.writeAsString(buf.toString());
-    await SharePlus.instance.share(ShareParams(
-      files: [XFile(file.path, mimeType: 'text/csv')],
+    await shareCsv(
+      filename: 'lets-padel-customers-$stamp.csv',
+      content: buf.toString(),
       subject: 'Let\'s Padel customers $stamp',
-    ));
+    );
   }
 
   @override

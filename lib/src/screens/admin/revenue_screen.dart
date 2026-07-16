@@ -1,16 +1,13 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../main.dart';
 import '../../models/booking.dart';
 import '../../models/branch.dart';
 import '../../services/firestore_service.dart';
 import '../../theme.dart';
+import '../../utils/csv_export.dart';
 import '../../utils/time_utils.dart';
 
 /// Expected revenue per branch, today and this week (Mon–Sun),
@@ -174,14 +171,11 @@ class _RevenueScreenState extends State<RevenueScreen> {
     ].join(','));
     final period = '${dateKey(range.start)}_${dateKey(range.end)}';
     final branch = _branchId ?? 'all-branches';
-    final dir = await getTemporaryDirectory();
-    final file =
-        File('${dir.path}/lets-padel-revenue-$period-$branch.csv');
-    await file.writeAsString(buf.toString());
-    await SharePlus.instance.share(ShareParams(
-      files: [XFile(file.path, mimeType: 'text/csv')],
+    await shareCsv(
+      filename: 'lets-padel-revenue-$period-$branch.csv',
+      content: buf.toString(),
       subject: 'Let\'s Padel revenue $period ($branch)',
-    ));
+    );
   }
 
   Future<void> _pickDate() async {

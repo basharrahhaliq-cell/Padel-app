@@ -1,17 +1,14 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../models/booking.dart';
 import '../../models/branch.dart';
 import '../../models/expense.dart';
 import '../../services/firestore_service.dart';
 import '../../theme.dart';
+import '../../utils/csv_export.dart';
 import '../../utils/time_utils.dart';
 
 /// The club's books for any period: money in (booking cash + package
@@ -348,14 +345,11 @@ class _AccountingScreenState extends State<AccountingScreen> {
 
     final period = '${dateKey(_range.start)}_${dateKey(_range.end)}';
     final branch = _branchId ?? 'whole-club';
-    final dir = await getTemporaryDirectory();
-    final file =
-        File('${dir.path}/lets-padel-accounting-$period-$branch.csv');
-    await file.writeAsString(buf.toString());
-    await SharePlus.instance.share(ShareParams(
-      files: [XFile(file.path, mimeType: 'text/csv')],
+    await shareCsv(
+      filename: 'lets-padel-accounting-$period-$branch.csv',
+      content: buf.toString(),
       subject: 'Let\'s Padel accounting $period ($branch)',
-    ));
+    );
   }
 
   Future<void> _addExpense(BuildContext context) async {
