@@ -101,15 +101,43 @@ class _RevenueScreenState extends State<RevenueScreen> {
     );
   }
 
-  /// End-of-month accounting: one CSV row per booking of the month,
-  /// shared via WhatsApp/email/AirDrop and openable in Excel.
-  Future<void> _exportMonthCsv(_RevenueData data) async {
+  /// Accounting export: pick any date range (defaults to the picked
+  /// month), then share one CSV row per booking — openable in Excel.
+  Future<void> _exportCsv() async {
+    final db = context.read<FirestoreService>();
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime.now().subtract(const Duration(days: 730)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: DateTimeRange(
+        start: DateTime(_date.year, _date.month, 1),
+        end: DateTime(_date.year, _date.month + 1, 0),
+      ),
+      helpText: 'Export bookings from — to',
+    );
+    if (range == null) return;
+    final bookings =
+        (await db.bookingsBetween(dateKey(range.start), dateKey(range.end)))
+            .where((b) =>
+                !b.isBlock &&
+                (_branchId == null || b.branchId == _branchId))
+            .toList()
+          ..sort((a, b) => a.date == b.date
+              ? a.startMinutes.compareTo(b.startMinutes)
+              : a.date.compareTo(b.date));
+    if (bookings.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('No bookings in that period.')));
+      }
+      return;
+    }
     String esc(String v) =>
         v.contains(RegExp(r'[",\n]')) ? '"${v.replaceAll('"', '""')}"' : v;
     final buf = StringBuffer(
         'Date,Time,Customer,Phone,Branch,Court,Minutes,Type,'
         'Price USD,Wallet used,Cash received,Payment\n');
-    for (final b in data.monthBookings) {
+    for (final b in bookings) {
       buf.writeln([
         b.date,
         formatMinutes(b.startMinutes),
@@ -125,15 +153,15 @@ class _RevenueScreenState extends State<RevenueScreen> {
         b.paidAmount != null ? 'paid' : 'pending',
       ].map(esc).join(','));
     }
-    final month = DateFormat('yyyy-MM').format(_date);
+    final period = '${dateKey(range.start)}_${dateKey(range.end)}';
     final branch = _branchId ?? 'all-branches';
     final dir = await getTemporaryDirectory();
     final file =
-        File('${dir.path}/lets-padel-revenue-$month-$branch.csv');
+        File('${dir.path}/lets-padel-revenue-$period-$branch.csv');
     await file.writeAsString(buf.toString());
     await SharePlus.instance.share(ShareParams(
       files: [XFile(file.path, mimeType: 'text/csv')],
-      subject: 'Let\'s Padel revenue $month ($branch)',
+      subject: 'Let\'s Padel revenue $period ($branch)',
     ));
   }
 
@@ -254,11 +282,8 @@ class _RevenueScreenState extends State<RevenueScreen> {
             const SizedBox(height: 12),
             OutlinedButton.icon(
               icon: const Icon(Icons.table_view),
-              label: Text(
-                  'Export ${DateFormat.MMMM().format(_date)} (Excel/CSV)'),
-              onPressed: data.monthBookings.isEmpty
-                  ? null
-                  : () => _exportMonthCsv(data),
+              label: const Text('Export report (Excel/CSV) — pick dates'),
+              onPressed: _exportCsv,
             ),
             const SizedBox(height: 12),
             Text(l10n.revenueNote,

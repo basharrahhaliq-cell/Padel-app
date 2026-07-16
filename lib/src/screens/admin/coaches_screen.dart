@@ -1,12 +1,15 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/branch.dart';
 import '../../models/coach.dart';
 import '../../models/court.dart';
 import '../../services/firestore_service.dart';
-import '../../theme.dart';
 import '../../utils/time_utils.dart';
+import '../../widgets/coach_avatar.dart';
 
 /// Owner academy management: coaches, their prices and weekly schedule,
 /// plus which court each branch uses for lessons.
@@ -45,17 +48,7 @@ class CoachesScreen extends StatelessWidget {
                     Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: c.active
-                              ? AppTheme.courtBlue
-                              : Colors.grey.shade400,
-                          child: Text(
-                              c.name.isEmpty
-                                  ? '?'
-                                  : c.name[0].toUpperCase(),
-                              style:
-                                  const TextStyle(color: Colors.white)),
-                        ),
+                        leading: CoachAvatar(coach: c, radius: 20),
                         title: Text(c.name),
                         subtitle: Text(
                             '${c.availability.entries.where((e) => e.value.isNotEmpty).length} working days/week'
@@ -160,7 +153,7 @@ class _CoachEditorScreenState extends State<CoachEditorScreen> {
   ];
 
   late final _name = TextEditingController(text: widget.existing?.name);
-  late final _photo = TextEditingController(text: widget.existing?.photoUrl);
+  late String _photoData = widget.existing?.photoData ?? '';
   late final _bio = TextEditingController(text: widget.existing?.bio);
   late final Map<String, TextEditingController> _prices = {
     for (final type in kSessionTypes.keys)
@@ -180,7 +173,6 @@ class _CoachEditorScreenState extends State<CoachEditorScreen> {
   @override
   void dispose() {
     _name.dispose();
-    _photo.dispose();
     _bio.dispose();
     for (final c in _prices.values) {
       c.dispose();
@@ -188,46 +180,79 @@ class _CoachEditorScreenState extends State<CoachEditorScreen> {
     super.dispose();
   }
 
+  /// Picks a photo from the gallery, shrinks it, and keeps it as
+  /// base64 to store right in the coach's document (no Firebase
+  /// Storage needed on the free plan).
+  Future<void> _pickPhoto() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 500,
+      maxHeight: 500,
+      imageQuality: 60,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (bytes.length > 500 * 1024) {
+      // ~1 MB Firestore document limit; compressed photos are ~40 KB,
+      // so hitting this means something unusual (e.g. a huge GIF).
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('That photo is too large — try another one.')));
+      }
+      return;
+    }
+    setState(() => _photoData = base64Encode(bytes));
+  }
+
   Future<void> _addWindow(int weekday) async {
     int start = 9 * 60;
     int end = 13 * 60;
+    // Stacked (not side by side) so long times never overflow,
+    // whatever the phone's font size.
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx2, setState) => AlertDialog(
-          title: Text('${_dayNames[weekday - 1]} window'),
-          content: Row(
+          title: Text('${_dayNames[weekday - 1]} — working hours'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: start,
-                  decoration: const InputDecoration(labelText: 'From'),
-                  items: [
-                    for (int t = ClubHours.openMinutes;
-                        t < ClubHours.closeMinutes;
-                        t += ClubHours.slotStepMinutes)
-                      DropdownMenuItem(
-                          value: t, child: Text(formatMinutes(t))),
-                  ],
-                  onChanged: (v) => setState(() => start = v!),
-                ),
+              DropdownButtonFormField<int>(
+                isExpanded: true,
+                initialValue: start,
+                decoration: const InputDecoration(
+                    labelText: 'From', prefixIcon: Icon(Icons.login)),
+                items: [
+                  for (int t = ClubHours.openMinutes;
+                      t < ClubHours.closeMinutes;
+                      t += ClubHours.slotStepMinutes)
+                    DropdownMenuItem(
+                        value: t, child: Text(formatMinutes(t))),
+                ],
+                onChanged: (v) => setState(() => start = v!),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: end,
-                  decoration: const InputDecoration(labelText: 'To'),
-                  items: [
-                    for (int t = ClubHours.openMinutes +
-                            ClubHours.slotStepMinutes;
-                        t <= ClubHours.closeMinutes;
-                        t += ClubHours.slotStepMinutes)
-                      DropdownMenuItem(
-                          value: t, child: Text(formatMinutes(t))),
-                  ],
-                  onChanged: (v) => setState(() => end = v!),
-                ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int>(
+                isExpanded: true,
+                initialValue: end,
+                decoration: const InputDecoration(
+                    labelText: 'To', prefixIcon: Icon(Icons.logout)),
+                items: [
+                  for (int t = ClubHours.openMinutes +
+                          ClubHours.slotStepMinutes;
+                      t <= ClubHours.closeMinutes;
+                      t += ClubHours.slotStepMinutes)
+                    DropdownMenuItem(
+                        value: t, child: Text(formatMinutes(t))),
+                ],
+                onChanged: (v) => setState(() => end = v!),
               ),
+              if (end <= start)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Text('"To" must be after "From".',
+                      style: TextStyle(color: Colors.red, fontSize: 13)),
+                ),
             ],
           ),
           actions: [
@@ -235,7 +260,9 @@ class _CoachEditorScreenState extends State<CoachEditorScreen> {
                 onPressed: () => Navigator.pop(ctx2, false),
                 child: const Text('Cancel')),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx2, true),
+                onPressed: end > start
+                    ? () => Navigator.pop(ctx2, true)
+                    : null,
                 child: const Text('Add')),
           ],
         ),
@@ -257,7 +284,8 @@ class _CoachEditorScreenState extends State<CoachEditorScreen> {
     await db.saveCoach(Coach(
       id: widget.existing?.id ?? '',
       name: _name.text.trim(),
-      photoUrl: _photo.text.trim(),
+      photoUrl: widget.existing?.photoUrl ?? '',
+      photoData: _photoData,
       bio: _bio.text.trim(),
       branchIds: _branchIds.toList(),
       prices: {
@@ -291,14 +319,53 @@ class _CoachEditorScreenState extends State<CoachEditorScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          TextField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: 'Name')),
+          Row(
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(36),
+                onTap: _pickPhoto,
+                child: CoachAvatar(
+                  radius: 32,
+                  coach: Coach(
+                    id: '',
+                    name: _name.text,
+                    photoUrl: widget.existing?.photoUrl ?? '',
+                    photoData: _photoData,
+                    branchIds: const [],
+                    prices: const {},
+                    availability: const {},
+                    active: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.photo_library, size: 18),
+                      label: Text(_photoData.isEmpty
+                          ? 'Add photo'
+                          : 'Change photo'),
+                      onPressed: _pickPhoto,
+                    ),
+                    if (_photoData.isNotEmpty)
+                      TextButton(
+                        onPressed: () =>
+                            setState(() => _photoData = ''),
+                        child: const Text('Remove photo'),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           TextField(
-              controller: _photo,
-              decoration: const InputDecoration(
-                  labelText: 'Photo URL (optional)')),
+              controller: _name,
+              onChanged: (_) => setState(() {}), // refresh avatar initial
+              decoration: const InputDecoration(labelText: 'Name')),
           const SizedBox(height: 12),
           TextField(
               controller: _bio,

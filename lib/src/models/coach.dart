@@ -16,10 +16,16 @@ class CoachWindow {
 }
 
 /// An academy coach: profile, per-session-type prices, weekly schedule.
+///
+/// The photo is stored as base64 right in the Firestore document
+/// ([photoData]) — small enough after compression, and it avoids
+/// needing Firebase Storage (Blaze plan). [photoUrl] remains as a
+/// fallback for photos hosted elsewhere.
 class Coach {
   final String id;
   final String name;
   final String photoUrl;
+  final String photoData; // base64-encoded JPEG, '' = none
   final String bio;
   final List<String> branchIds;
   final Map<String, double> prices; // sessionType -> USD per session
@@ -30,6 +36,7 @@ class Coach {
     required this.id,
     required this.name,
     this.photoUrl = '',
+    this.photoData = '',
     this.bio = '',
     required this.branchIds,
     required this.prices,
@@ -47,6 +54,7 @@ class Coach {
       id: doc.id,
       name: (data['name'] as String?) ?? '',
       photoUrl: (data['photoUrl'] as String?) ?? '',
+      photoData: (data['photoData'] as String?) ?? '',
       bio: (data['bio'] as String?) ?? '',
       branchIds: List<String>.from(data['branchIds'] ?? const []),
       prices: rawPrices.map((k, v) => MapEntry(k, (v as num).toDouble())),
@@ -64,6 +72,7 @@ class Coach {
   Map<String, dynamic> toMap() => {
         'name': name,
         'photoUrl': photoUrl,
+        'photoData': photoData,
         'bio': bio,
         'branchIds': branchIds,
         'prices': prices,

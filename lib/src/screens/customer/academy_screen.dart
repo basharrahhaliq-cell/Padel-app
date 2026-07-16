@@ -11,6 +11,7 @@ import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../theme.dart';
 import '../../utils/time_utils.dart';
+import '../../widgets/coach_avatar.dart';
 
 /// Academy: browse coaches and book a session.
 class AcademyScreen extends StatelessWidget {
@@ -45,23 +46,7 @@ class AcademyScreen extends StatelessWidget {
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 8),
-                  leading: CircleAvatar(
-                    radius: 26,
-                    backgroundColor: AppTheme.courtBlue,
-                    backgroundImage: coach.photoUrl.isEmpty
-                        ? null
-                        : NetworkImage(coach.photoUrl),
-                    child: coach.photoUrl.isEmpty
-                        ? Text(
-                            coach.name.isEmpty
-                                ? '?'
-                                : coach.name[0].toUpperCase(),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold))
-                        : null,
-                  ),
+                  leading: CoachAvatar(coach: coach),
                   title: Text(coach.name,
                       style:
                           const TextStyle(fontWeight: FontWeight.w600)),
