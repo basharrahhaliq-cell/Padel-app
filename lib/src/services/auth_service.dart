@@ -45,9 +45,15 @@ class AuthService {
   /// Google sign-in. Creates the profile on first login; the phone number
   /// is collected right after by the "complete profile" screen (AuthGate
   /// routes there while the profile has no phone).
+  /// The Firebase project's Web client ID — required on Android to get
+  /// an ID token (we don't ship google-services.json). Client IDs are
+  /// public identifiers, safe to commit.
+  static const _webClientId =
+      '941590347459-mtaud4e1kj95vgprhl2jc5m5jphr3bvd.apps.googleusercontent.com';
+
   Future<void> signInWithGoogle() async {
     final google = GoogleSignIn.instance;
-    await google.initialize();
+    await google.initialize(serverClientId: _webClientId);
     final account = await google.authenticate();
     final idToken = account.authentication.idToken;
     final credential = GoogleAuthProvider.credential(idToken: idToken);
