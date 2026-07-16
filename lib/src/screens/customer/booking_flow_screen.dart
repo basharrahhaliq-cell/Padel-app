@@ -217,39 +217,23 @@ class _SlotGrid extends StatelessWidget {
               );
             }
 
-            final money = NumberFormat.currency(symbol: '\$');
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            // Compact equal boxes, three per row; happy-hour slots
+            // glow lime with a 🎉 next to the discounted price.
+            String price(double v) => v == v.roundToDouble()
+                ? '\$${v.round()}'
+                : NumberFormat.currency(symbol: '\$').format(v);
+            return GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 1.7,
               children: [
                 for (final slot in slots)
-                  ActionChip(
-                    backgroundColor: slot.happyHour != null
-                        ? AppTheme.ballLime.withValues(alpha: 0.35)
-                        : Colors.white,
-                    side: BorderSide(
-                        color: slot.happyHour != null
-                            ? AppTheme.ballLime
-                            : Colors.blueGrey.shade100),
-                    label: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(formatMinutes(slot.startMinutes),
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600)),
-                        Text(
-                          slot.happyHour != null
-                              ? '${money.format(slot.price)} · ${l10n.happyHourTag}'
-                              : money.format(slot.price),
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: slot.happyHour != null
-                                  ? AppTheme.courtBlueDark
-                                  : Colors.grey.shade700),
-                        ),
-                      ],
-                    ),
-                    onPressed: () => Navigator.of(context).push(
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => BookingConfirmScreen(
                           branch: branch,
@@ -258,6 +242,47 @@ class _SlotGrid extends StatelessWidget {
                           slot: slot,
                           profile: profile,
                         ),
+                      ),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: slot.happyHour != null
+                            ? AppTheme.ballLime.withValues(alpha: 0.35)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: slot.happyHour != null
+                                ? AppTheme.ballLime
+                                : Colors.blueGrey.shade100),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(formatMinutes(slot.startMinutes),
+                                style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                          const SizedBox(height: 2),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              slot.happyHour != null
+                                  ? '${price(slot.price)} 🎉'
+                                  : price(slot.price),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: slot.happyHour != null
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                  color: slot.happyHour != null
+                                      ? AppTheme.courtBlueDark
+                                      : Colors.grey.shade700),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
