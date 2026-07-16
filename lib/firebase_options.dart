@@ -23,10 +23,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -64,5 +61,18 @@ class DefaultFirebaseOptions {
     projectId: 'lets-padel-club-lb',
     authDomain: 'lets-padel-club-lb.firebaseapp.com',
     storageBucket: 'lets-padel-club-lb.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyBGxHJLeOBFTjALruzNwDpCGWdBs_a96nI',
+    appId: '1:941590347459:ios:d39a1727e4e0572fadec76',
+    messagingSenderId: '941590347459',
+    projectId: 'lets-padel-club-lb',
+    storageBucket: 'lets-padel-club-lb.firebasestorage.app',
+    androidClientId:
+        '941590347459-b2097te1upa3tj36mad9l099f4hdp1s9.apps.googleusercontent.com',
+    iosClientId:
+        '941590347459-35vrrb13vm7lreujofmvhkl6rt3ko97g.apps.googleusercontent.com',
+    iosBundleId: 'com.padelclub.padelApp',
   );
 }
