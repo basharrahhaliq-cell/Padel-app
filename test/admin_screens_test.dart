@@ -126,11 +126,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // The booking starts unpaid: the row invites recording.
+    await tester.scrollUntilVisible(find.text('Tap to record'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Tap to record'), findsOneWidget);
 
     // Owner taps the row, changes the amount to a friend rate, saves.
-    await tester.ensureVisible(find.text('Tap to record'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Tap to record'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '20');

@@ -12,6 +12,7 @@ import '../models/package_offer.dart';
 import '../models/voucher.dart';
 import '../utils/slot_engine.dart';
 import '../utils/time_utils.dart';
+import '../utils/xp.dart';
 
 /// Thrown when a slot was taken between viewing and confirming.
 class SlotTakenException implements Exception {}
@@ -649,6 +650,46 @@ class FirestoreService {
       .collection('bookings')
       .doc(bookingId)
       .update({'paidAmount': amount, 'paymentStatus': 'paid'});
+
+  /// Awards the signed-in user's XP for games whose time has passed.
+  ///
+  /// The Cloud Function does this on the server every hour, but until
+  /// the project is on the Blaze plan the function isn't deployed —
+  /// so the app settles it on launch, otherwise the level bar never
+  /// moves. Marks each booking xpAwarded so nothing is counted twice.
+  Future<void> awardPendingXp(String uid) async {
+    final s = await _db
+        .collection('bookings')
+        .where('userId', isEqualTo: uid)
+        .where('xpAwarded', isEqualTo: false)
+        .get();
+    final now = DateTime.now();
+    final played = s.docs
+        .map(Booking.fromDoc)
+        .where((b) =>
+            b.status == BookingStatus.confirmed &&
+            !b.isBlock &&
+            b.startDateTime
+                .add(Duration(minutes: b.durationMinutes))
+                .isBefore(now))
+        .toList();
+    if (played.isEmpty) return;
+    var xp = 0;
+    for (final b in played) {
+      xp += XpSystem.bookingXp +
+          (b.isOpenMatch ? XpSystem.openMatchJoinBonus : 0);
+    }
+    final batch = _db.batch();
+    for (final b in played) {
+      batch.update(
+          _db.collection('bookings').doc(b.id), {'xpAwarded': true});
+    }
+    batch.update(_db.collection('users').doc(uid), {
+      'xp': FieldValue.increment(xp),
+      'matchesPlayed': FieldValue.increment(played.length),
+    });
+    await batch.commit();
+  }
 
   // ---------- First-run seeding ----------
 

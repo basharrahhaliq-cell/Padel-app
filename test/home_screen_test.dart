@@ -80,4 +80,61 @@ void main() {
     expect(navigatedTab, 3);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Home screen lists every upcoming game, not just one',
+      (tester) async {
+    final db = FakeFirebaseFirestore();
+    for (final date in ['2100-01-01', '2100-01-03', '2100-01-05']) {
+      await db.collection('bookings').add({
+        'branchId': 'airport-road',
+        'branchName': 'Airport Road',
+        'courtId': 'court-1',
+        'courtName': 'Court 1',
+        'date': date,
+        'startMinutes': 18 * 60,
+        'durationMinutes': 90,
+        'userId': 'u1',
+        'userName': 'Bashar R',
+        'userPhone': '+9613123456',
+        'price': 30.0,
+        'status': 'confirmed',
+        'isBlock': false,
+      });
+    }
+    const profile = AppUser(
+        uid: 'u1',
+        name: 'Bashar R',
+        phone: '+9613123456',
+        email: 'b@x.com',
+        role: 'customer',
+        skillLevel: 'C');
+
+    await tester.pumpWidget(MultiProvider(
+      providers: [
+        Provider<FirestoreService>(create: (_) => FirestoreService(db)),
+        Provider<TournamentService>(create: (_) => TournamentService(db)),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [Locale('en')],
+        home: Scaffold(
+          body: HomeScreen(profile: profile, onGoToTab: (_) {}),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Your upcoming games (3)'), findsOneWidget);
+    // One compact row per game, all three dates visible.
+    expect(find.textContaining('Jan 1'), findsOneWidget);
+    expect(find.textContaining('Jan 3'), findsOneWidget);
+    expect(find.textContaining('Jan 5'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

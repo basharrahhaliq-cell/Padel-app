@@ -87,8 +87,9 @@ service cloud.firestore {
         request.resource.data.isBlock == false &&
         request.resource.data.status == 'confirmed'
       );
-      // Customers may cancel their own booking, or attach/detach an
-      // open match to it — nothing else.
+      // Customers may cancel their own booking, attach/detach an open
+      // match to it, or mark their finished game's XP as settled —
+      // nothing else.
       allow update: if isAdmin() || (
         signedIn() &&
         resource.data.userId == request.auth.uid && (
@@ -96,7 +97,10 @@ service cloud.firestore {
            request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['status'])) ||
           request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['isOpenMatch', 'openMatchId'])
+             .hasOnly(['isOpenMatch', 'openMatchId']) ||
+          (request.resource.data.xpAwarded == true &&
+           request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['xpAwarded']))
         )
       );
       allow delete: if isAdmin();

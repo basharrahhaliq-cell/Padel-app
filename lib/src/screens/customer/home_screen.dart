@@ -292,7 +292,8 @@ class _PackagesStrip extends StatelessWidget {
   }
 }
 
-/// The customer's next upcoming booking, or nothing if they have none.
+/// The customer's upcoming bookings — every one of them, as compact
+/// rows in a single card (not just the next game).
 class _NextGameCard extends StatelessWidget {
   final AppUser profile;
 
@@ -305,14 +306,14 @@ class _NextGameCard extends StatelessWidget {
       stream: db.myBookings(profile.uid),
       builder: (context, snap) {
         final now = DateTime.now();
-        final next = (snap.data ?? [])
+        final upcoming = (snap.data ?? [])
             .where((b) => b
                 .startDateTime
                 .add(Duration(minutes: b.durationMinutes))
                 .isAfter(now))
-            .firstOrNull;
+            .toList();
         // Padel-IQ style empty state: turn "no game" into a call to action.
-        if (next == null) {
+        if (upcoming.isEmpty) {
           return Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -342,28 +343,51 @@ class _NextGameCard extends StatelessWidget {
         }
         return Card(
           color: AppTheme.courtBlueDark,
-          child: ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-            leading: const Icon(Icons.schedule,
-                color: AppTheme.ballLime, size: 32),
-            title: Text(
-              next.isLesson
-                  ? 'Next lesson with ${next.coachName}'
-                  : 'Your next game',
-              style: const TextStyle(
-                  color: Colors.white70, fontSize: 13),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  upcoming.length == 1
+                      ? 'Your next game'
+                      : 'Your upcoming games (${upcoming.length})',
+                  style:
+                      const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                for (final b in upcoming)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Row(
+                      children: [
+                        Icon(b.isLesson ? Icons.school : Icons.schedule,
+                            color: AppTheme.ballLime, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '${DateFormat.MMMEd().format(parseDateKey(b.date))} · '
+                            '${formatMinutes(b.startMinutes)}'
+                            '${b.isLesson ? ' · lesson with ${b.coachName}' : ''}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${b.branchName == 'Airport Road' ? 'Airport' : b.branchName} · ${b.courtName}',
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
-            subtitle: Text(
-              '${DateFormat.MMMEd().format(parseDateKey(next.date))} · '
-              '${formatMinutes(next.startMinutes)}\n'
-              '${next.branchName} · ${next.courtName}',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600),
-            ),
-            isThreeLine: true,
           ),
         );
       },

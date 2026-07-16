@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../main.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import 'academy_screen.dart';
 import 'home_screen.dart';
@@ -26,10 +27,15 @@ class _CustomerHomeState extends State<CustomerHome> {
   @override
   void initState() {
     super.initState();
-    // Register this device for open-match / tournament pushes.
+    // Register this device for open-match / tournament pushes, and
+    // settle any XP earned since the last visit so the level bar moves.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<NotificationService>().registerForPush(widget.profile);
+      context
+          .read<FirestoreService>()
+          .awardPendingXp(widget.profile.uid)
+          .catchError((_) {}); // best effort — the hourly function catches up
     });
   }
 
