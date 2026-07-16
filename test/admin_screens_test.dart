@@ -65,6 +65,11 @@ Widget wrap(FakeFirebaseFirestore db, Widget child) => MultiProvider(
       ],
       child: MaterialApp(
         theme: AppTheme.light(), // real club theme — catches theme bugs
+        // Large font scale like real phones — catches pixel overflows.
+        builder: (context, w) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(1.3)),
+            child: w!),
         localizationsDelegates: const [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
