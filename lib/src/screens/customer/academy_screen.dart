@@ -216,47 +216,19 @@ class _LessonBookingScreenState extends State<LessonBookingScreen> {
                 stream: db.courts(branch.id),
                 builder: (context, courtSnap) {
                   final courts = courtSnap.data ?? [];
-                  return FutureBuilder<List<(int, Court)>>(
+                  return _LessonSlots(
+                    // New key (fresh load) only when the selection
+                    // actually changes — unrelated screen refreshes
+                    // no longer restart the loading.
                     key: ValueKey(
                         '${branch.id}_${dateKey(_date)}_${courts.length}'),
-                    future: db.lessonSlots(
-                        coach: coach,
-                        branch: branch,
-                        courts: courts,
-                        date: dateKey(_date)),
-                    builder: (context, slotSnap) {
-                      if (!slotSnap.hasData) {
-                        return const Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Center(
-                              child: CircularProgressIndicator()),
-                        );
-                      }
-                      final slots = slotSnap.data!;
-                      if (slots.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text('No free times this day — the coach '
-                              'may not work this day or is fully booked. '
-                              'Try another date.'),
-                        );
-                      }
-                      return Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final (start, court) in slots)
-                            ActionChip(
-                              backgroundColor: Colors.white,
-                              label: Text(formatMinutes(start)),
-                              onPressed: _booking
-                                  ? null
-                                  : () => _confirm(
-                                      branch, court, start),
-                            ),
-                        ],
-                      );
-                    },
+                    coach: coach,
+                    branch: branch,
+                    courts: courts,
+                    date: dateKey(_date),
+                    enabled: !_booking,
+                    onPick: (court, start) =>
+                        _confirm(branch, court, start),
                   );
                 },
               ),
@@ -341,5 +313,99 @@ class _LessonBookingScreenState extends State<LessonBookingScreen> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Something went wrong: $e')));
     }
+  }
+}
+
+/// Loads the coach's free times ONCE per selection and keeps the
+/// result: parent rebuilds (live streams elsewhere on the screen) no
+/// longer restart the loading — the old inline FutureBuilder refetched
+/// on every rebuild, which on slow connections looked like an endless
+/// spinner. Errors show a Retry button instead of buffering forever.
+class _LessonSlots extends StatefulWidget {
+  final Coach coach;
+  final Branch branch;
+  final List<Court> courts;
+  final String date;
+  final bool enabled;
+  final void Function(Court court, int startMinutes) onPick;
+
+  const _LessonSlots({
+    super.key,
+    required this.coach,
+    required this.branch,
+    required this.courts,
+    required this.date,
+    required this.enabled,
+    required this.onPick,
+  });
+
+  @override
+  State<_LessonSlots> createState() => _LessonSlotsState();
+}
+
+class _LessonSlotsState extends State<_LessonSlots> {
+  late Future<List<(int, Court)>> _future = _load();
+
+  Future<List<(int, Court)>> _load() =>
+      context.read<FirestoreService>().lessonSlots(
+            coach: widget.coach,
+            branch: widget.branch,
+            courts: widget.courts,
+            date: widget.date,
+          );
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<(int, Court)>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                const Text('Could not load the times — check your '
+                    'connection.'),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                  onPressed: () => setState(() => _future = _load()),
+                ),
+              ],
+            ),
+          );
+        }
+        if (!snap.hasData) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final slots = snap.data!;
+        if (slots.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('No free times this day — the coach '
+                'may not work this day or is fully booked. '
+                'Try another date.'),
+          );
+        }
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final (start, court) in slots)
+              ActionChip(
+                backgroundColor: Colors.white,
+                label: Text(formatMinutes(start)),
+                onPressed: widget.enabled
+                    ? () => widget.onPick(court, start)
+                    : null,
+              ),
+          ],
+        );
+      },
+    );
   }
 }

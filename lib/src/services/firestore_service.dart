@@ -387,14 +387,18 @@ class FirestoreService {
         : courts.where((c) => c.id == branch.lessonCourtId).toList();
     if (candidateCourts.isEmpty) return const [];
 
-    // One read per court + one for the coach's day.
-    final courtBusy = <String, List<BusyInterval>>{};
-    for (final court in candidateCourts) {
-      final snap = await _dayRef(branch.id, court.id, date).get();
-      courtBusy[court.id] = intervalsFromDay(snap.data());
-    }
-    final coachSnap = await _coachDayRef(coach.id, date).get();
-    final coachBusy = intervalsFromDay(coachSnap.data());
+    // One read per court + one for the coach's day — in PARALLEL, so a
+    // slow connection pays one round trip instead of one per court.
+    final snaps = await Future.wait([
+      for (final court in candidateCourts)
+        _dayRef(branch.id, court.id, date).get(),
+      _coachDayRef(coach.id, date).get(),
+    ]);
+    final courtBusy = <String, List<BusyInterval>>{
+      for (final (i, court) in candidateCourts.indexed)
+        court.id: intervalsFromDay(snaps[i].data()),
+    };
+    final coachBusy = intervalsFromDay(snaps.last.data());
 
     final now = DateTime.now();
     final isToday = dateKey(now) == date;
