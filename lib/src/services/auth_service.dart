@@ -80,12 +80,19 @@ class AuthService {
       _auth.sendPasswordResetEmail(email: email);
 
   Future<void> signOut() async {
-    try {
-      await GoogleSignIn.instance.signOut();
-    } catch (_) {
-      // Not signed in with Google — nothing to do.
-    }
+    // Sign Firebase out FIRST — it's what actually logs the user out.
+    // The Google plugin cleanup happens after, and never on web: the
+    // web login uses Firebase's popup (the plugin is uninitialized
+    // there and its signOut can hang forever, which used to leave the
+    // logout button doing nothing).
     await _auth.signOut();
+    if (!kIsWeb) {
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {
+        // Not signed in with Google — nothing to do.
+      }
+    }
   }
 
   /// Creates the users/{uid} profile on first login; never downgrades an
