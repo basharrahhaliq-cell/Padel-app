@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -41,6 +42,26 @@ class PadelApp extends StatelessWidget {
       title: "Let's Padel",
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      // The layout is designed for phones. On big browser windows we
+      // show it as a centered phone-width column (like WhatsApp Web)
+      // instead of stretching cards across the whole monitor.
+      builder: (context, child) {
+        if (!kIsWeb) return child!;
+        return ColoredBox(
+          color: const Color(0xFFE8EDF2),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: ClipRect(
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(color: Colors.white),
+                  child: child!,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
