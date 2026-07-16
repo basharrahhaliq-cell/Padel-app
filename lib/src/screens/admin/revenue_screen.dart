@@ -137,7 +137,11 @@ class _RevenueScreenState extends State<RevenueScreen> {
     final buf = StringBuffer(
         'Date,Time,Customer,Phone,Branch,Court,Minutes,Type,'
         'Price USD,Wallet used,Cash received,Payment\n');
+    double totalPrice = 0, totalWallet = 0, totalCash = 0;
     for (final b in bookings) {
+      totalPrice += b.price;
+      totalWallet += b.walletUsed;
+      totalCash += b.paidAmount ?? 0;
       buf.writeln([
         b.date,
         formatMinutes(b.startMinutes),
@@ -153,6 +157,21 @@ class _RevenueScreenState extends State<RevenueScreen> {
         b.paidAmount != null ? 'paid' : 'pending',
       ].map(esc).join(','));
     }
+    // Grand-total row so the sums are right there in Excel.
+    buf.writeln([
+      'TOTAL',
+      '',
+      '${bookings.length} bookings',
+      '',
+      '',
+      '',
+      '',
+      '',
+      totalPrice.toStringAsFixed(2),
+      totalWallet.toStringAsFixed(2),
+      totalCash.toStringAsFixed(2),
+      '',
+    ].join(','));
     final period = '${dateKey(range.start)}_${dateKey(range.end)}';
     final branch = _branchId ?? 'all-branches';
     final dir = await getTemporaryDirectory();

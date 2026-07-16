@@ -165,6 +165,11 @@ service cloud.firestore {
       allow write: if signedIn();
     }
 
+    // Club expenses (accounting): owner only.
+    match /expenses/{expenseId} {
+      allow read, write: if isAdmin();
+    }
+
     // Coaches: customers browse; the owner manages them.
     match /coaches/{coachId} {
       allow read: if signedIn();

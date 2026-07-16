@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme.dart';
+import 'accounting_screen.dart';
 import 'customers_screen.dart';
 import 'pricing_screen.dart';
 import 'revenue_screen.dart';
@@ -21,6 +22,7 @@ class AdminMoreScreen extends StatelessWidget {
           title: 'Pricing', child: PricingScreen())),
       (Icons.point_of_sale, 'Revenue & Cash box', () => const _Page(
           title: 'Revenue & Cash box', child: RevenueScreen())),
+      (Icons.calculate, 'Accounting', () => const AccountingScreen()),
       (Icons.people, 'Customers', () => const CustomersScreen()),
       (Icons.emoji_events, 'Tournaments', () =>
           const TournamentsAdminScreen()),

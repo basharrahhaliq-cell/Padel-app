@@ -6,6 +6,7 @@ import '../models/booking.dart';
 import '../models/branch.dart';
 import '../models/coach.dart';
 import '../models/court.dart';
+import '../models/expense.dart';
 import '../models/happy_hour_rule.dart';
 import '../models/open_match.dart';
 import '../models/package_offer.dart';
@@ -289,6 +290,7 @@ class FirestoreService {
       'paid': package.price,
       'credit': package.credit,
       'expiry': expiry,
+      'date': dateKey(DateTime.now()), // for accounting date ranges
       'createdAt': FieldValue.serverTimestamp(),
     });
     await batch.commit();
@@ -642,6 +644,30 @@ class FirestoreService {
               .map(Booking.fromDoc)
               .where((b) => b.status == BookingStatus.confirmed)
               .toList());
+
+  // ---------- Accounting ----------
+
+  /// Club expenses in a date-key range (inclusive), live.
+  Stream<List<Expense>> expensesBetween(String fromDate, String toDate) =>
+      _db
+          .collection('expenses')
+          .where('date', isGreaterThanOrEqualTo: fromDate)
+          .where('date', isLessThanOrEqualTo: toDate)
+          .snapshots()
+          .map((s) => s.docs.map(Expense.fromDoc).toList());
+
+  Future<void> addExpense(Expense expense) =>
+      _db.collection('expenses').add(expense.toMap());
+
+  Future<void> deleteExpense(String id) =>
+      _db.collection('expenses').doc(id).delete();
+
+  /// Every package payment (all customers) — accounting income. Old
+  /// entries may lack the 'date' key, so range filtering happens
+  /// client-side using createdAt as a fallback.
+  Stream<List<Map<String, dynamic>>> allWalletTopUps() =>
+      _db.collection('walletTopUps').snapshots().map(
+          (s) => s.docs.map((d) => {...d.data(), 'id': d.id}).toList());
 
   /// Records the cash received for a booking. Intentionally not awaited
   /// by callers: the local snapshot updates instantly and the write
