@@ -545,35 +545,47 @@ class _CourtZone extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // No box — just a "player" standing on the court: a lime token
+    // with the icon, and the label floating under it.
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Center(
-        child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppTheme.courtBlueDark.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-                color: Colors.white.withValues(alpha: 0.25), width: 1),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: AppTheme.ballLime, size: 30),
-              const SizedBox(height: 8),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(label,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: AppTheme.ballLime,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3)),
+                ],
               ),
-            ],
-          ),
+              child: Icon(icon, color: AppTheme.courtBlueDark, size: 30),
+            ),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                            color: Colors.black54,
+                            blurRadius: 4,
+                            offset: Offset(0, 1)),
+                      ])),
+            ),
+          ],
         ),
       ),
     );
