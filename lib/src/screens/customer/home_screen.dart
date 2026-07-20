@@ -488,27 +488,25 @@ class _CourtActions extends StatelessWidget {
       (Icons.school, 'Academy', () => onGoToTab(3)),
     ];
     return AspectRatio(
-      aspectRatio: 1.08,
-      child: DecoratedBox(
+      aspectRatio: 0.96,
+      child: Container(
+        // Dark "cage" frame around the court.
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF2E6BD6), AppTheme.courtBlue],
-          ),
+          color: const Color(0xFF0E2740),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-                color: AppTheme.courtBlueDark.withValues(alpha: 0.35),
-                blurRadius: 14,
-                offset: const Offset(0, 6)),
+                color: AppTheme.courtBlueDark.withValues(alpha: 0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 8)),
           ],
         ),
         child: CustomPaint(
           painter: _CourtPainter(),
           child: Padding(
-            // Leave room for the painted outer boundary line.
-            padding: const EdgeInsets.all(14),
+            // Keep the buttons inside the painted boundary line.
+            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
                 for (var row = 0; row < 2; row++)
@@ -535,7 +533,8 @@ class _CourtActions extends StatelessWidget {
   }
 }
 
-/// One tappable quarter of the court.
+/// One tappable quarter of the court: a readable chip centred in the
+/// zone so it never touches the painted lines.
 class _CourtZone extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -546,32 +545,34 @@ class _CourtZone extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(6),
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: Colors.white, size: 30),
-                const SizedBox(height: 8),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(label,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Center(
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.courtBlueDark.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.25), width: 1),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: AppTheme.ballLime, size: 30),
+              const SizedBox(height: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
         ),
       ),
@@ -579,48 +580,66 @@ class _CourtZone extends StatelessWidget {
   }
 }
 
-/// Paints the white court lines and the centre net over the surface.
+/// Paints the padel court: two-tone blue surface, crisp white lines,
+/// and a centre net with a ball resting on it.
 class _CourtPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final court = RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, w, h), const Radius.circular(12));
+
+    // Base surface (deeper blue) + lighter service-box band for the
+    // classic two-tone padel look.
+    canvas.drawRRect(court, Paint()..color = const Color(0xFF1E5AAE));
+    canvas.save();
+    canvas.clipRRect(court);
+    canvas.drawRect(Rect.fromLTWH(0, h * 0.24, w, h * 0.52),
+        Paint()..color = const Color(0xFF2E74D0));
+    canvas.restore();
+
     final line = Paint()
-      ..color = Colors.white.withValues(alpha: 0.85)
+      ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
+      ..strokeWidth = 3;
 
     // Outer boundary.
-    final r = RRect.fromRectAndRadius(
-      Rect.fromLTWH(6, 6, size.width - 12, size.height - 12),
-      const Radius.circular(10),
-    );
-    canvas.drawRRect(r, line);
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(5, 5, w - 10, h - 10),
+            const Radius.circular(9)),
+        line);
 
-    final midY = size.height / 2;
-    final midX = size.width / 2;
+    final midY = h / 2, midX = w / 2;
+    // Service lines + centre service line.
+    canvas.drawLine(Offset(5, h * 0.24), Offset(w - 5, h * 0.24), line);
+    canvas.drawLine(Offset(5, h * 0.76), Offset(w - 5, h * 0.76), line);
+    canvas.drawLine(Offset(midX, h * 0.24), Offset(midX, h * 0.76), line);
 
-    // Service lines (parallel to the net, one each side).
-    canvas.drawLine(Offset(6, size.height * 0.22),
-        Offset(size.width - 6, size.height * 0.22), line);
-    canvas.drawLine(Offset(6, size.height * 0.78),
-        Offset(size.width - 6, size.height * 0.78), line);
-    // Centre service line (between the service lines, split by the net).
-    canvas.drawLine(Offset(midX, size.height * 0.22),
-        Offset(midX, size.height * 0.78), line);
-
-    // The net: a solid band across the middle with faint mesh hatching.
-    final netBand = Paint()..color = AppTheme.courtBlueDark.withValues(alpha: 0.55);
-    canvas.drawRect(Rect.fromLTWH(0, midY - 5, size.width, 10), netBand);
-    final net = Paint()
-      ..color = Colors.white.withValues(alpha: 0.5)
+    // Net: fine mesh + a solid white top tape across the middle.
+    final mesh = Paint()
+      ..color = Colors.white.withValues(alpha: 0.35)
       ..strokeWidth = 1;
-    canvas.drawLine(Offset(6, midY), Offset(size.width - 6, midY), net);
-    for (double x = 10; x < size.width - 6; x += 8) {
-      canvas.drawLine(Offset(x, midY - 5), Offset(x, midY + 5), net);
+    for (double x = 8; x < w - 8; x += 7) {
+      canvas.drawLine(Offset(x, midY - 6), Offset(x, midY + 6), mesh);
     }
-    // Net posts.
-    final post = Paint()..color = Colors.white.withValues(alpha: 0.9);
-    canvas.drawCircle(Offset(6, midY), 3, post);
-    canvas.drawCircle(Offset(size.width - 6, midY), 3, post);
+    canvas.drawLine(Offset(5, midY - 6), Offset(w - 5, midY - 6), mesh);
+    canvas.drawLine(
+        Offset(5, midY),
+        Offset(w - 5, midY),
+        Paint()
+          ..color = Colors.white
+          ..strokeWidth = 3.5);
+
+    // A padel ball resting on the centre of the net.
+    canvas.drawCircle(Offset(midX, midY),
+        8, Paint()..color = AppTheme.ballLime);
+    canvas.drawCircle(
+        Offset(midX, midY),
+        8,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5);
   }
 
   @override

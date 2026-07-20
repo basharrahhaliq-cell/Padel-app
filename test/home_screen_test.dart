@@ -59,7 +59,7 @@ void main() {
         ),
       ),
     ));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.textContaining('Ahla Bashar'), findsOneWidget);
     // XP bar shows live numbers (profile has 0 XP -> level 2 at 200).
@@ -76,7 +76,7 @@ void main() {
     expect(find.textContaining('Your next game'), findsOneWidget);
 
     await tester.ensureVisible(find.text('Academy'));
-    await tester.pumpAndSettle();
+    await tester.pump();
     await tester.tap(find.text('Academy'));
     expect(navigatedTab, 3);
     expect(tester.takeException(), isNull);
@@ -129,7 +129,7 @@ void main() {
         ),
       ),
     ));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.textContaining('Your upcoming games (3)'), findsOneWidget);
     // One compact row per game, all three dates visible.
