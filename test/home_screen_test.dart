@@ -68,12 +68,12 @@ void main() {
     // Paid/Saved moved to the Profile; Home shows packages instead.
     expect(find.text('Paid'), findsNothing);
     expect(find.text('Saved'), findsNothing);
+    // The four court-zone shortcuts.
     expect(find.text('Book a Court'), findsOneWidget);
     expect(find.text('Open Matches'), findsOneWidget);
-    expect(find.text('Tournaments'), findsOneWidget);
+    expect(find.text('Tournaments'), findsWidgets);
     expect(find.text('Academy'), findsOneWidget);
     expect(find.textContaining('Your next game'), findsOneWidget);
-    expect(find.textContaining('Airport Road'), findsWidgets);
 
     await tester.ensureVisible(find.text('Academy'));
     await tester.pumpAndSettle();

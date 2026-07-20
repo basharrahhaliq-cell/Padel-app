@@ -50,46 +50,8 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 12),
         _WalletChip(profile: profile),
         _NextGameCard(profile: profile),
-        const SizedBox(height: 8),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.35,
-          children: [
-            _ActionCard(
-              icon: Icons.sports_tennis,
-              title: 'Book a Court',
-              subtitle: 'Airport Road · Hazmieh',
-              color: AppTheme.courtBlue,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => BranchPickerScreen(profile: profile))),
-            ),
-            _ActionCard(
-              icon: Icons.group_add,
-              title: 'Open Matches',
-              subtitle: 'Find players at your level',
-              color: const Color(0xFF199473),
-              onTap: () => onGoToTab(1),
-            ),
-            _ActionCard(
-              icon: Icons.emoji_events,
-              title: 'Tournaments',
-              subtitle: 'Americano & Knockout',
-              color: const Color(0xFFCC8A00),
-              onTap: () => onGoToTab(2),
-            ),
-            _ActionCard(
-              icon: Icons.school,
-              title: 'Academy',
-              subtitle: 'Train with our coaches',
-              color: const Color(0xFF7B4FBF),
-              onTap: () => onGoToTab(3),
-            ),
-          ],
-        ),
+        const SizedBox(height: 16),
+        _CourtActions(profile: profile, onGoToTab: onGoToTab),
         _PackagesStrip(profile: profile),
         _TournamentsStrip(profile: profile, onShowAll: () => onGoToTab(2)),
       ],
@@ -503,56 +465,166 @@ class _TournamentsStrip extends StatelessWidget {
   }
 }
 
-class _ActionCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
+/// The four main actions laid out on a top-down padel court: the net
+/// runs across the middle and the centre service line splits left/right,
+/// so the four zones become the four shortcuts.
+class _CourtActions extends StatelessWidget {
+  final AppUser profile;
+  final void Function(int tab) onGoToTab;
 
-  const _ActionCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
+  const _CourtActions({required this.profile, required this.onGoToTab});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
+    final zones = <(IconData, String, VoidCallback)>[
+      (
+        Icons.sports_tennis,
+        'Book a Court',
+        () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => BranchPickerScreen(profile: profile)))
+      ),
+      (Icons.group_add, 'Open Matches', () => onGoToTab(1)),
+      (Icons.emoji_events, 'Tournaments', () => onGoToTab(2)),
+      (Icons.school, 'Academy', () => onGoToTab(3)),
+    ];
+    return AspectRatio(
+      aspectRatio: 1.08,
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Colors.white, size: 28),
-            const Spacer(),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(title,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
-            ),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(subtitle,
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 11)),
-            ),
+          borderRadius: BorderRadius.circular(18),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF2E6BD6), AppTheme.courtBlue],
+          ),
+          boxShadow: [
+            BoxShadow(
+                color: AppTheme.courtBlueDark.withValues(alpha: 0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 6)),
           ],
+        ),
+        child: CustomPaint(
+          painter: _CourtPainter(),
+          child: Padding(
+            // Leave room for the painted outer boundary line.
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                for (var row = 0; row < 2; row++)
+                  Expanded(
+                    child: Row(
+                      children: [
+                        for (var col = 0; col < 2; col++)
+                          Expanded(
+                            child: _CourtZone(
+                              icon: zones[row * 2 + col].$1,
+                              label: zones[row * 2 + col].$2,
+                              onTap: zones[row * 2 + col].$3,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+}
+
+/// One tappable quarter of the court.
+class _CourtZone extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _CourtZone(
+      {required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white, size: 30),
+                const SizedBox(height: 8),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(label,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Paints the white court lines and the centre net over the surface.
+class _CourtPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..color = Colors.white.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+
+    // Outer boundary.
+    final r = RRect.fromRectAndRadius(
+      Rect.fromLTWH(6, 6, size.width - 12, size.height - 12),
+      const Radius.circular(10),
+    );
+    canvas.drawRRect(r, line);
+
+    final midY = size.height / 2;
+    final midX = size.width / 2;
+
+    // Service lines (parallel to the net, one each side).
+    canvas.drawLine(Offset(6, size.height * 0.22),
+        Offset(size.width - 6, size.height * 0.22), line);
+    canvas.drawLine(Offset(6, size.height * 0.78),
+        Offset(size.width - 6, size.height * 0.78), line);
+    // Centre service line (between the service lines, split by the net).
+    canvas.drawLine(Offset(midX, size.height * 0.22),
+        Offset(midX, size.height * 0.78), line);
+
+    // The net: a solid band across the middle with faint mesh hatching.
+    final netBand = Paint()..color = AppTheme.courtBlueDark.withValues(alpha: 0.55);
+    canvas.drawRect(Rect.fromLTWH(0, midY - 5, size.width, 10), netBand);
+    final net = Paint()
+      ..color = Colors.white.withValues(alpha: 0.5)
+      ..strokeWidth = 1;
+    canvas.drawLine(Offset(6, midY), Offset(size.width - 6, midY), net);
+    for (double x = 10; x < size.width - 6; x += 8) {
+      canvas.drawLine(Offset(x, midY - 5), Offset(x, midY + 5), net);
+    }
+    // Net posts.
+    final post = Paint()..color = Colors.white.withValues(alpha: 0.9);
+    canvas.drawCircle(Offset(6, midY), 3, post);
+    canvas.drawCircle(Offset(size.width - 6, midY), 3, post);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Swipeable promo cards managed by the owner (announcements only).

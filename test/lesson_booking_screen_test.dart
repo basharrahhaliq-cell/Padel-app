@@ -65,10 +65,11 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    // Resolved: either time chips (day not over) or the no-times
-    // message (test running after 12:00) — never a stuck spinner.
+    // Resolved: either time chips (window still open today) or the
+    // no-times message (test running late in the day) — but never a
+    // stuck spinner, which was the bug.
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    final hasTimes = find.text('9:00 AM').evaluate().isNotEmpty ||
+    final hasTimes = find.byType(ActionChip).evaluate().isNotEmpty ||
         find.textContaining('No free times').evaluate().isNotEmpty;
     expect(hasTimes, isTrue);
     expect(tester.takeException(), isNull);
