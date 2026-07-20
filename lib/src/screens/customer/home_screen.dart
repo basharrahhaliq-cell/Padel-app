@@ -545,8 +545,11 @@ class _CourtZone extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // No box — just a "player" standing on the court: a lime token
-    // with the icon, and the label floating under it.
+    // Just the icon and its label sitting in the court space — no
+    // circle, no box.
+    const shadow = [
+      Shadow(color: Colors.black54, blurRadius: 5, offset: Offset(0, 1)),
+    ];
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
@@ -554,21 +557,7 @@ class _CourtZone extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: AppTheme.ballLime,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3)),
-                ],
-              ),
-              child: Icon(icon, color: AppTheme.courtBlueDark, size: 30),
-            ),
+            Icon(icon, color: AppTheme.ballLime, size: 40, shadows: shadow),
             const SizedBox(height: 8),
             FittedBox(
               fit: BoxFit.scaleDown,
@@ -576,14 +565,9 @@ class _CourtZone extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(
-                            color: Colors.black54,
-                            blurRadius: 4,
-                            offset: Offset(0, 1)),
-                      ])),
+                      shadows: shadow)),
             ),
           ],
         ),
