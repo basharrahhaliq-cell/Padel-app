@@ -6,6 +6,7 @@ import '../../../main.dart';
 import '../../models/booking.dart';
 import '../../models/branch.dart';
 import '../../models/court.dart';
+import '../../models/open_match.dart';
 import '../../services/firestore_service.dart';
 import '../../theme.dart';
 import '../../utils/time_utils.dart';
@@ -71,7 +72,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         _filters(l10n, db),
         Expanded(
-          child: StreamBuilder<List<Booking>>(
+          child: StreamBuilder<List<OpenMatch>>(
+            stream: db.openMatchesOn(dateKey(_date)),
+            builder: (context, matchSnap) {
+              final matchByBooking = {
+                for (final m in matchSnap.data ?? <OpenMatch>[])
+                  m.bookingId: m,
+              };
+              return StreamBuilder<List<Booking>>(
             stream: db.bookingsOn(dateKey(_date), branchId: _branchId),
             builder: (context, snap) {
               if (!snap.hasData) {
@@ -106,33 +114,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         title: Text(b.isBlock
                             ? '${l10n.blockedLabel} — ${b.note ?? ''}'
-                            : b.userName),
+                            : b.isLesson
+                                ? '${b.userName} · LESSON with ${b.coachName}'
+                                : b.isOpenMatch
+                                    ? '${b.userName}  ·  OPEN MATCH'
+                                    : b.userName),
                         subtitle: Text(
                           '${b.branchName} · ${b.courtName}\n'
                           '${formatMinutes(b.startMinutes)} – ${formatMinutes(b.endMinutes)}'
-                          '${b.isBlock ? '' : ' · ${b.userPhone}'}',
+                          '${b.isBlock ? '' : ' · ${b.userPhone}'}'
+                          '${b.voucherCode != null ? ' · ${b.voucherCode}' : ''}'
+                          '${matchByBooking.containsKey(b.id) ? '\nPlayers: ${matchByBooking[b.id]!.allPlayerNames.join(', ')}' : ''}',
                         ),
                         isThreeLine: true,
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (!b.isBlock)
-                              Text(money.format(b.price),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.courtBlue)),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline,
-                                  color: Colors.redAccent, size: 20),
-                              onPressed: () => _cancelAsAdmin(b),
-                            ),
-                          ],
+                        // FittedBox scales this corner down to whatever
+                        // space the tile has — immune to device font size.
+                        trailing: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              if (!b.isBlock)
+                                Text(money.format(b.price),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.courtBlue)),
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                                constraints: const BoxConstraints(
+                                    minWidth: 36, minHeight: 30),
+                                icon: const Icon(Icons.delete_outline,
+                                    color: Colors.redAccent, size: 20),
+                                onPressed: () => _cancelAsAdmin(b),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                 ],
               );
+            },
+          );
             },
           ),
         ),
@@ -176,6 +201,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String?>(
+                        isExpanded: true,
                         initialValue: _branchId,
                         isDense: true,
                         decoration: const InputDecoration(
@@ -198,6 +224,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Expanded(
                       child: _branchId == null
                           ? DropdownButtonFormField<String?>(
+                              isExpanded: true,
                               initialValue: null,
                               isDense: true,
                               decoration: const InputDecoration(
@@ -215,6 +242,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               builder: (context, courtSnap) {
                                 final courts = courtSnap.data ?? [];
                                 return DropdownButtonFormField<String?>(
+                                  isExpanded: true,
                                   initialValue: _courtId,
                                   isDense: true,
                                   decoration: const InputDecoration(

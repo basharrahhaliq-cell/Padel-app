@@ -21,11 +21,41 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.role == 'customer';
+      // Self-updates can't change the role and can't INCREASE the
+      // prepaid wallet (only the owner grants credit; bookings only
+      // ever decrease it; refunds run through the Cloud Function).
       allow update: if signedIn() && (
         isAdmin() ||
         (request.auth.uid == userId &&
-         request.resource.data.role == resource.data.role)
+         request.resource.data.role == resource.data.role &&
+         request.resource.data.get('walletBalance', 0)
+           <= resource.data.get('walletBalance', 0))
       );
+    }
+
+    // Prepaid packages: customers browse; owner manages.
+    match /packages/{packageId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Wallet top-up log: owner writes when granting; customers may read
+    // their own history.
+    match /walletTopUps/{topUpId} {
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isAdmin();
+    }
+
+    // Package purchase requests: customers create their own; the owner
+    // reads and resolves them.
+    match /packageRequests/{requestId} {
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
     }
 
     // Branches, courts and prices: everyone signed in can read;
@@ -57,21 +87,98 @@ service cloud.firestore {
         request.resource.data.isBlock == false &&
         request.resource.data.status == 'confirmed'
       );
-      // Customers may only flip their own booking to cancelled.
+      // Customers may cancel their own booking, attach/detach an open
+      // match to it, or mark their finished game's XP as settled —
+      // nothing else.
       allow update: if isAdmin() || (
         signedIn() &&
-        resource.data.userId == request.auth.uid &&
-        request.resource.data.status == 'cancelled' &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status'])
+        resource.data.userId == request.auth.uid && (
+          (request.resource.data.status == 'cancelled' &&
+           request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status'])) ||
+          request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['isOpenMatch', 'openMatchId']) ||
+          (request.resource.data.xpAwarded == true &&
+           request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['xpAwarded']))
+        )
       );
       allow delete: if isAdmin();
+    }
+
+    // Open matches: anyone signed in can browse and join (players/status
+    // only); creating requires being the creator; admins can do anything.
+    match /openMatches/{matchId} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.resource.data.creatorId == request.auth.uid;
+      allow update: if isAdmin() || (signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['players', 'status']));
+      allow delete: if isAdmin();
+    }
+
+    // Promo banners: read-only announcements managed by the owner.
+    match /banners/{bannerId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Vouchers: customers read them (to browse and apply) and the booking
+    // transaction may only bump the usage counters; owner manages them.
+    match /vouchers/{code} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['uses', 'totalDiscount', 'usesByUser']));
+    }
+
+    // Tournaments: everyone signed in reads; the owner manages them.
+    // Customers may register themselves (entry create with their own uid)
+    // and the tournament's counters move only via the register transaction.
+    match /tournaments/{tournamentId} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['entriesCount', 'waitlistCount']));
+
+      match /entries/{entryId} {
+        allow read: if signedIn();
+        allow create: if isAdmin() || (signedIn() &&
+          request.resource.data.uids.hasAny([request.auth.uid]));
+        allow update, delete: if isAdmin();
+      }
+
+      match /matches/{matchId} {
+        allow read: if signedIn();
+        allow write: if isAdmin();
+      }
     }
 
     // Day sheets (busy intervals per court per day): readable by all
     // signed-in users so the app can show availability; written by the
     // booking transaction of any signed-in user or by admins.
     match /courtDays/{dayId} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+
+    // Club expenses (accounting): owner only.
+    match /expenses/{expenseId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Coaches: customers browse; the owner manages them.
+    match /coaches/{coachId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Coach day sheets — same trust model as courtDays (updated by the
+    // lesson booking transaction).
+    match /coachDays/{dayId} {
       allow read: if signedIn();
       allow write: if signedIn();
     }

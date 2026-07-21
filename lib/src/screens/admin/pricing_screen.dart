@@ -62,10 +62,18 @@ class PricingScreen extends StatelessWidget {
             ],
             const SizedBox(height: 24),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(l10n.happyHourRules,
-                    style: Theme.of(context).textTheme.titleLarge),
+                // Shrinks the title instead of overflowing when the
+                // phone's font size is large.
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(l10n.happyHourRules,
+                        style: Theme.of(context).textTheme.titleLarge),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 FilledButton.tonalIcon(
                   icon: const Icon(Icons.add, size: 18),
                   label: Text(l10n.newRule),

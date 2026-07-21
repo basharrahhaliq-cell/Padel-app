@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 
 import '../../../main.dart';
 import '../../models/app_user.dart';
-import '../../models/branch.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
-import '../../theme.dart';
-import 'booking_flow_screen.dart';
-import 'my_bookings_screen.dart';
+import '../../services/notification_service.dart';
+import 'academy_screen.dart';
+import 'home_screen.dart';
+import 'open_matches_screen.dart';
+import 'profile_screen.dart';
+import 'tournaments_screen.dart' show TournamentsScreen;
 
 class CustomerHome extends StatefulWidget {
   final AppUser profile;
@@ -19,15 +21,53 @@ class CustomerHome extends StatefulWidget {
   State<CustomerHome> createState() => _CustomerHomeState();
 }
 
-class _CustomerHomeState extends State<CustomerHome> {
+class _CustomerHomeState extends State<CustomerHome>
+    with WidgetsBindingObserver {
   int _tab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Register this device for open-match / tournament pushes, and
+    // settle any XP earned since the last visit so the level bar moves.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<NotificationService>().registerForPush(widget.profile);
+      _settleXp();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Also settle when the user comes back to the app without
+  /// restarting it (e.g. right after playing their game).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _settleXp();
+  }
+
+  void _settleXp() => context
+      .read<FirestoreService>()
+      .awardPendingXp(widget.profile.uid)
+      .catchError((_) {}); // best effort — the hourly function catches up
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        title: Text(_tab == 0 ? l10n.appTitle : l10n.myBookingsTab),
+        title: Text(switch (_tab) {
+          0 => l10n.appTitle,
+          1 => 'Open Matches',
+          2 => 'Tournaments',
+          3 => 'Academy',
+          _ => 'Profile',
+        }),
         actions: [
           IconButton(
             tooltip: l10n.signOut,
@@ -36,71 +76,29 @@ class _CustomerHomeState extends State<CustomerHome> {
           ),
         ],
       ),
-      body: _tab == 0
-          ? _BranchPicker(profile: widget.profile)
-          : MyBookingsScreen(profile: widget.profile),
+      body: switch (_tab) {
+        0 => HomeScreen(
+            profile: widget.profile,
+            onGoToTab: (tab) => setState(() => _tab = tab),
+          ),
+        1 => OpenMatchesScreen(profile: widget.profile),
+        2 => TournamentsScreen(profile: widget.profile),
+        3 => AcademyScreen(profile: widget.profile),
+        _ => ProfileScreen(profile: widget.profile),
+      },
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: [
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(
-              icon: const Icon(Icons.sports_tennis), label: l10n.bookTab),
+              icon: Icon(Icons.group_add), label: 'Matches'),
           NavigationDestination(
-              icon: const Icon(Icons.event_note), label: l10n.myBookingsTab),
+              icon: Icon(Icons.emoji_events), label: 'Events'),
+          NavigationDestination(icon: Icon(Icons.school), label: 'Academy'),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
-    );
-  }
-}
-
-class _BranchPicker extends StatelessWidget {
-  final AppUser profile;
-
-  const _BranchPicker({required this.profile});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final db = context.read<FirestoreService>();
-    return StreamBuilder<List<Branch>>(
-      stream: db.branches(),
-      builder: (context, snap) {
-        if (!snap.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final branches = snap.data!;
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text(l10n.chooseBranch,
-                style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            for (final branch in branches)
-              Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 12),
-                  leading: const CircleAvatar(
-                    backgroundColor: AppTheme.ballLime,
-                    child: Icon(Icons.location_on,
-                        color: AppTheme.courtBlueDark),
-                  ),
-                  title: Text(branch.name,
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => BookingFlowScreen(
-                          branch: branch, profile: profile),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
     );
   }
 }

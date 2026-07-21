@@ -9,7 +9,21 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Padel Club';
+  String get appTitle => 'Let\'s Padel';
+
+  @override
+  String get contactUsTitle => 'Contact us';
+
+  @override
+  String get contactUsHint => 'Questions? Chat with your branch on WhatsApp:';
+
+  @override
+  String whatsappButton(String branch) {
+    return 'WhatsApp — $branch';
+  }
+
+  @override
+  String get couldNotOpenWhatsapp => 'Could not open WhatsApp on this phone.';
 
   @override
   String get bookTab => 'Book';
@@ -27,19 +41,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signOut => 'Sign out';
 
   @override
-  String get emailTab => 'Email';
-
-  @override
-  String get phoneTab => 'Phone';
-
-  @override
   String get nameLabel => 'Full name';
 
   @override
   String get phoneLabel => 'Phone number';
 
   @override
-  String get phoneHint => '+961 3 123 456';
+  String get phoneHint => '03 123 456';
 
   @override
   String get emailLabel => 'Email';
@@ -60,18 +68,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get haveAccount => 'Already have an account? Sign in';
 
   @override
-  String get sendCode => 'Send code';
+  String get continueWithGoogle => 'Continue with Google';
 
   @override
-  String get smsCodeLabel => 'SMS code';
+  String get invalidPhone =>
+      'Please enter a valid Lebanese phone number (e.g. 03 123 456).';
 
   @override
-  String get verifyCode => 'Verify';
+  String get skillLevelLabel => 'Your padel level';
 
   @override
-  String codeSentTo(String phone) {
-    return 'We sent a code to $phone';
-  }
+  String get levelA => 'A — Advanced';
+
+  @override
+  String get levelB => 'B — Intermediate';
+
+  @override
+  String get levelC => 'C — Beginner–Intermediate';
+
+  @override
+  String get levelD => 'D — Beginner';
+
+  @override
+  String get marketingConsentLabel =>
+      'Send me news, offers, and tournament invites';
+
+  @override
+  String get completeProfileTitle => 'Complete your profile';
+
+  @override
+  String get completeProfileHint =>
+      'Just a couple of details so the club can reach you about your bookings.';
+
+  @override
+  String get continueButton => 'Continue';
+
+  @override
+  String get privacyPolicyTitle => 'Privacy policy';
 
   @override
   String get fillAllFields => 'Please fill in all fields.';
@@ -280,13 +313,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get percentOff => 'Percent off';
 
   @override
-  String get fixedPriceLabel => 'Fixed price (USD)';
+  String get fixedPriceLabel => 'Fixed price / hour';
 
   @override
   String get percentValueLabel => 'Percent (e.g. 20)';
 
   @override
-  String get fixedValueLabel => 'Price in USD';
+  String get fixedValueLabel => 'Price per hour (USD) — 90 min costs 1.5×';
 
   @override
   String get activeLabel => 'Active';

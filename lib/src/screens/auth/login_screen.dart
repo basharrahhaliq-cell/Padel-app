@@ -1,12 +1,18 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 
 import '../../../main.dart';
+import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
-import '../../theme.dart';
+import '../../utils/validators.dart';
+import '../contact_us_screen.dart';
+import '../privacy_policy_screen.dart';
 
-/// Login / sign-up with two tabs: Email (password) and Phone (SMS code).
+/// Login / sign-up with email+password, or one tap with Google.
+/// Sign-up collects the required profile: name, Lebanese phone number,
+/// padel level, and the optional marketing consent.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,15 +25,15 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phone = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
-  final _smsCode = TextEditingController();
 
   bool _creatingAccount = false;
   bool _busy = false;
-  String? _verificationId; // set once the SMS code has been sent
+  String _skillLevel = 'D';
+  bool _marketingConsent = false;
 
   @override
   void dispose() {
-    for (final c in [_name, _phone, _email, _password, _smsCode]) {
+    for (final c in [_name, _phone, _email, _password]) {
       c.dispose();
     }
     super.dispose();
@@ -44,6 +50,11 @@ class _LoginScreenState extends State<LoginScreen> {
       await action();
     } on FirebaseAuthException catch (e) {
       if (mounted) _snack(context.l10n.authFailed(e.message ?? e.code));
+    } on GoogleSignInException catch (e) {
+      // Cancelled sign-in is not an error worth showing.
+      if (e.code != GoogleSignInExceptionCode.canceled && mounted) {
+        _snack(context.l10n.authFailed(e.description ?? e.code.name));
+      }
     } catch (e) {
       if (mounted) _snack(context.l10n.genericError(e.toString()));
     } finally {
@@ -58,63 +69,32 @@ class _LoginScreenState extends State<LoginScreen> {
       _snack(l10n.fillAllFields);
       return;
     }
-    if (_creatingAccount &&
-        (_name.text.trim().isEmpty || _phone.text.trim().isEmpty)) {
-      _snack(l10n.fillAllFields);
-      return;
-    }
-    await _run(() async {
-      if (_creatingAccount) {
+    if (_creatingAccount) {
+      if (_name.text.trim().isEmpty || _phone.text.trim().isEmpty) {
+        _snack(l10n.fillAllFields);
+        return;
+      }
+      final phone = LebanesePhone.normalize(_phone.text);
+      if (phone == null) {
+        _snack(l10n.invalidPhone);
+        return;
+      }
+      await _run(() async {
         await auth.signUpWithEmail(
           name: _name.text.trim(),
-          phone: _phone.text.trim(),
+          phone: phone,
           email: _email.text.trim(),
           password: _password.text,
         );
-      } else {
-        await auth.signInWithEmail(_email.text.trim(), _password.text);
-      }
-    });
-  }
-
-  Future<void> _sendSmsCode() async {
-    final l10n = context.l10n;
-    final auth = context.read<AuthService>();
-    if (_phone.text.trim().isEmpty || _name.text.trim().isEmpty) {
-      _snack(l10n.fillAllFields);
-      return;
-    }
-    setState(() => _busy = true);
-    await auth.startPhoneSignIn(
-      phoneNumber: _phone.text.trim(),
-      onCodeSent: (verificationId) {
-        if (!mounted) return;
-        setState(() {
-          _verificationId = verificationId;
-          _busy = false;
+        await auth.updateProfile(auth.currentUser!.uid, {
+          'skillLevel': _skillLevel,
+          'marketingConsent': _marketingConsent,
         });
-        _snack(l10n.codeSentTo(_phone.text.trim()));
-      },
-      onError: (message) {
-        if (!mounted) return;
-        setState(() => _busy = false);
-        _snack(l10n.authFailed(message));
-      },
-      onAutoVerified: () {
-        if (mounted) setState(() => _busy = false);
-      },
-    );
-  }
-
-  Future<void> _confirmSmsCode() async {
-    final auth = context.read<AuthService>();
-    if (_verificationId == null || _smsCode.text.trim().isEmpty) return;
-    await _run(() => auth.confirmSmsCode(
-          verificationId: _verificationId!,
-          smsCode: _smsCode.text.trim(),
-          name: _name.text.trim(),
-          phone: _phone.text.trim(),
-        ));
+      });
+    } else {
+      await _run(
+          () => auth.signInWithEmail(_email.text.trim(), _password.text));
+    }
   }
 
   Future<void> _forgotPassword() async {
@@ -132,141 +112,140 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 32),
-                const Icon(Icons.sports_tennis,
-                    size: 64, color: AppTheme.courtBlue),
-                const SizedBox(height: 8),
-                Text(l10n.appTitle,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineMedium
-                        ?.copyWith(
-                            color: AppTheme.courtBlue,
-                            fontWeight: FontWeight.bold)),
-                const SizedBox(height: 24),
-                TabBar(
-                  labelColor: AppTheme.courtBlue,
-                  tabs: [
-                    Tab(text: l10n.emailTab),
-                    Tab(text: l10n.phoneTab),
-                  ],
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 24),
+              const BrandLogo(height: 150),
+              const SizedBox(height: 28),
+              if (_creatingAccount) ...[
+                TextField(
+                  controller: _name,
+                  decoration: InputDecoration(labelText: l10n.nameLabel),
                 ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _phone,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                      labelText: l10n.phoneLabel, hintText: l10n.phoneHint),
+                ),
+                const SizedBox(height: 12),
+              ],
+              TextField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(labelText: l10n.emailLabel),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _password,
+                obscureText: true,
+                decoration: InputDecoration(labelText: l10n.passwordLabel),
+              ),
+              if (_creatingAccount) ...[
                 const SizedBox(height: 16),
-                SizedBox(
-                  height: 420,
-                  child: TabBarView(
-                    children: [_emailTab(l10n), _phoneTab(l10n)],
-                  ),
+                DropdownButtonFormField<String>(
+                  initialValue: _skillLevel,
+                  decoration:
+                      InputDecoration(labelText: l10n.skillLevelLabel),
+                  items: [
+                    for (final level in kSkillLevels)
+                      DropdownMenuItem(
+                          value: level, child: Text(levelName(l10n, level))),
+                  ],
+                  onChanged: (v) => setState(() => _skillLevel = v!),
+                ),
+                CheckboxListTile(
+                  value: _marketingConsent,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: Text(l10n.marketingConsentLabel,
+                      style: const TextStyle(fontSize: 14)),
+                  onChanged: (v) =>
+                      setState(() => _marketingConsent = v ?? false),
                 ),
               ],
-            ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _busy ? null : _submitEmail,
+                child: _busy
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(_creatingAccount ? l10n.signUp : l10n.signIn),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.g_mobiledata, size: 32),
+                label: Text(l10n.continueWithGoogle),
+                onPressed: _busy
+                    ? null
+                    : () => _run(
+                        () => context.read<AuthService>().signInWithGoogle()),
+              ),
+              TextButton(
+                onPressed: _busy
+                    ? null
+                    : () =>
+                        setState(() => _creatingAccount = !_creatingAccount),
+                child: Text(
+                    _creatingAccount ? l10n.haveAccount : l10n.noAccountYet),
+              ),
+              if (!_creatingAccount)
+                TextButton(
+                  onPressed: _busy ? null : _forgotPassword,
+                  child: Text(l10n.forgotPassword),
+                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const ContactUsScreen())),
+                    child: Text(l10n.contactUsTitle,
+                        style: TextStyle(color: Colors.grey.shade600)),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const PrivacyPolicyScreen())),
+                    child: Text(l10n.privacyPolicyTitle,
+                        style: TextStyle(color: Colors.grey.shade600)),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _emailTab(dynamic l10n) {
-    return ListView(
-      children: [
-        if (_creatingAccount) ...[
-          TextField(
-            controller: _name,
-            decoration: InputDecoration(labelText: l10n.nameLabel),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-                labelText: l10n.phoneLabel, hintText: l10n.phoneHint),
-          ),
-          const SizedBox(height: 12),
-        ],
-        TextField(
-          controller: _email,
-          keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(labelText: l10n.emailLabel),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _password,
-          obscureText: true,
-          decoration: InputDecoration(labelText: l10n.passwordLabel),
-        ),
-        const SizedBox(height: 20),
-        FilledButton(
-          onPressed: _busy ? null : _submitEmail,
-          child: _busy
-              ? const SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : Text(_creatingAccount ? l10n.signUp : l10n.signIn),
-        ),
-        TextButton(
-          onPressed: _busy
-              ? null
-              : () => setState(() => _creatingAccount = !_creatingAccount),
-          child:
-              Text(_creatingAccount ? l10n.haveAccount : l10n.noAccountYet),
-        ),
-        if (!_creatingAccount)
-          TextButton(
-            onPressed: _busy ? null : _forgotPassword,
-            child: Text(l10n.forgotPassword),
-          ),
-      ],
-    );
-  }
-
-  Widget _phoneTab(dynamic l10n) {
-    final codeSent = _verificationId != null;
-    return ListView(
-      children: [
-        TextField(
-          controller: _name,
-          decoration: InputDecoration(labelText: l10n.nameLabel),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _phone,
-          keyboardType: TextInputType.phone,
-          decoration: InputDecoration(
-              labelText: l10n.phoneLabel, hintText: l10n.phoneHint),
-        ),
-        const SizedBox(height: 12),
-        if (codeSent)
-          TextField(
-            controller: _smsCode,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(labelText: l10n.smsCodeLabel),
-          ),
-        const SizedBox(height: 20),
-        FilledButton(
-          onPressed: _busy
-              ? null
-              : codeSent
-                  ? _confirmSmsCode
-                  : _sendSmsCode,
-          child: _busy
-              ? const SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : Text(codeSent ? l10n.verifyCode : l10n.sendCode),
-        ),
-      ],
-    );
+/// Human-readable level name, shared by every screen that shows levels.
+String levelName(dynamic l10n, String level) {
+  switch (level) {
+    case 'A':
+      return l10n.levelA;
+    case 'B':
+      return l10n.levelB;
+    case 'C':
+      return l10n.levelC;
+    case 'D':
+      return l10n.levelD;
+    default:
+      return level;
   }
 }

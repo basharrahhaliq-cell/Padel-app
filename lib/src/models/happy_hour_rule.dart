@@ -21,10 +21,9 @@ class HappyHourRule {
   final int endMinutes;
   final DiscountType discountType;
 
-  /// Percent off (e.g. 20) when [discountType] is percent,
-  /// or the fixed USD price when fixedPrice. For fixed price the same
-  /// price applies to every duration unless per-duration prices are set
-  /// in [fixedPrices].
+  /// Percent off (e.g. 20) when [discountType] is percent, or the fixed
+  /// USD price PER HOUR when fixedPrice (scaled by duration: $20/h means
+  /// $30 for 90 minutes), unless overridden per duration in [fixedPrices].
   final double value;
 
   /// Optional per-duration fixed prices, e.g. {60: 20, 90: 28, 120: 35}.

@@ -30,6 +30,30 @@ class Booking {
   final DateTime? createdAt;
   final String paymentStatus;
 
+  /// Set when the owner turned this booking into an Open Match.
+  final bool isOpenMatch;
+  final String? openMatchId;
+
+  /// Set to true by the Cloud Function once XP was granted (after the
+  /// game time has passed).
+  final bool xpAwarded;
+
+  /// Voucher applied at checkout (if any) and how much it saved.
+  final String? voucherCode;
+  final double voucherDiscount;
+
+  /// Amount of this booking paid from the customer's prepaid wallet.
+  final double walletUsed;
+
+  /// Cash the owner recorded receiving at the club (null = not yet paid).
+  final double? paidAmount;
+
+  /// Academy lesson fields (the student is userId/userName).
+  final bool isLesson;
+  final String? coachId;
+  final String? coachName;
+  final String? sessionType; // private | semi | group
+
   const Booking({
     required this.id,
     required this.branchId,
@@ -49,6 +73,17 @@ class Booking {
     this.note,
     this.createdAt,
     this.paymentStatus = 'pay_at_club',
+    this.isOpenMatch = false,
+    this.openMatchId,
+    this.xpAwarded = false,
+    this.voucherCode,
+    this.voucherDiscount = 0,
+    this.walletUsed = 0,
+    this.paidAmount,
+    this.isLesson = false,
+    this.coachId,
+    this.coachName,
+    this.sessionType,
   });
 
   int get endMinutes => startMinutes + durationMinutes;
@@ -78,6 +113,17 @@ class Booking {
       note: data['note'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       paymentStatus: (data['paymentStatus'] as String?) ?? 'pay_at_club',
+      isOpenMatch: (data['isOpenMatch'] as bool?) ?? false,
+      openMatchId: data['openMatchId'] as String?,
+      xpAwarded: (data['xpAwarded'] as bool?) ?? false,
+      voucherCode: data['voucherCode'] as String?,
+      voucherDiscount: (data['voucherDiscount'] as num?)?.toDouble() ?? 0,
+      walletUsed: (data['walletUsed'] as num?)?.toDouble() ?? 0,
+      paidAmount: (data['paidAmount'] as num?)?.toDouble(),
+      isLesson: (data['isLesson'] as bool?) ?? false,
+      coachId: data['coachId'] as String?,
+      coachName: data['coachName'] as String?,
+      sessionType: data['sessionType'] as String?,
     );
   }
 
@@ -100,5 +146,16 @@ class Booking {
         'note': note,
         'createdAt': FieldValue.serverTimestamp(),
         'paymentStatus': paymentStatus,
+        'isOpenMatch': isOpenMatch,
+        'openMatchId': openMatchId,
+        'xpAwarded': false,
+        'voucherCode': voucherCode,
+        'voucherDiscount': voucherDiscount,
+        'walletUsed': walletUsed,
+        'paidAmount': paidAmount,
+        'isLesson': isLesson,
+        'coachId': coachId,
+        'coachName': coachName,
+        'sessionType': sessionType,
       };
 }
